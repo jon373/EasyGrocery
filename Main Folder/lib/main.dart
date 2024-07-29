@@ -36,6 +36,7 @@ class GroceryHomePage extends StatefulWidget {
   _GroceryHomePageState createState() => _GroceryHomePageState();
 }
 
+// Items that available
 class _GroceryHomePageState extends State<GroceryHomePage> {
   final List<GroceryItem> _groceryItems = [
     GroceryItem(name: 'Apples', price: 50.0),
@@ -54,17 +55,20 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
   List<RecommendedItem> _recommendedItems = [];
   double _totalPrice = 0.0;
 
+// this is the function of grocery budget
   void _recommendGroceries() {
     final double budget = double.tryParse(_budgetController.text) ?? 0.0;
     List<RecommendedItem> recommendedItems = [];
     double totalPrice = 0.0;
 
+// Loop to add items (this is already fixed bug for freezing)
     while (totalPrice < budget) {
       bool anyItemAdded = false;
 
       for (GroceryItem item in _groceryItems) {
         if (totalPrice + item.price <= budget) {
           var found = false;
+
           for (var recommendedItem in recommendedItems) {
             if (recommendedItem.item.name == item.name) {
               recommendedItem.quantity++;
@@ -72,6 +76,7 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
               break;
             }
           }
+          // This to perform to add item if not on the list
           if (!found) {
             recommendedItems.add(RecommendedItem(item: item, quantity: 1));
           }
@@ -90,6 +95,7 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
     });
   }
 
+// This is UI
   @override
   Widget build(BuildContext context) {
     return Scaffold(
