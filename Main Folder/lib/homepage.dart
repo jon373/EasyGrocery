@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'categories.dart'; // Import the file with the grocery items and CartItem class
+import 'searchItem.dart';
 
 class GroceryHomePage extends StatefulWidget {
   @override
@@ -8,84 +9,10 @@ class GroceryHomePage extends StatefulWidget {
 
 class _GroceryHomePageState extends State<GroceryHomePage> {
   final TextEditingController _budgetController = TextEditingController();
-  final TextEditingController _searchController = TextEditingController();
   double _totalAmount = 0.0;
 
   List<CartItem> _addedItems =
       []; // List to hold added items and their quantities
-  List<GroceryItem> _filteredItems = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _filteredItems = []; // Start with an empty list
-  }
-
-  void _filterItems(String query) {
-    setState(() {
-      if (query.isEmpty) {
-        _filteredItems = []; // Show no items if query is empty
-      } else {
-        _filteredItems = groceryItems
-            .where(
-                (item) => item.name.toLowerCase().contains(query.toLowerCase()))
-            .toList();
-      }
-    });
-  }
-
-  void _showQuantityDialog(GroceryItem item) {
-    final TextEditingController _quantityController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Adjust Quantity for ${item.name}'),
-          content: TextField(
-            controller: _quantityController,
-            decoration: InputDecoration(
-              hintText: 'Enter quantity',
-              border: OutlineInputBorder(),
-            ),
-            keyboardType: TextInputType.number,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                int quantity = int.tryParse(_quantityController.text) ?? 0;
-                if (quantity > 0) {
-                  setState(() {
-                    // Check if the item already exists in the added items list
-                    int existingIndex = _addedItems
-                        .indexWhere((cartItem) => cartItem.item == item);
-                    if (existingIndex != -1) {
-                      // Update the quantity for the existing item
-                      _addedItems[existingIndex].quantity +=
-                          quantity; // Increase the quantity
-                    } else {
-                      // Add the item and quantity to the added items list
-                      _addedItems.add(CartItem(item: item, quantity: quantity));
-                    }
-                    _totalAmount +=
-                        item.price * quantity; // Update total amount
-                  });
-                  Navigator.of(context).pop(); // Close the dialog
-                }
-              },
-              child: Text('Add to Cart'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   void _increaseQuantity(CartItem cartItem) {
     setState(() {
@@ -118,7 +45,8 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
             TextButton(
               onPressed: () {
                 setState(() {
-                  _totalAmount -= cartItem.item.price; // Update total amount
+                  _totalAmount -= cartItem.item.price *
+                      cartItem.quantity; // Update total amount
                   _addedItems.remove(cartItem); // Remove the item from the cart
                 });
                 Navigator.of(context).pop(); // Close the dialog
@@ -135,6 +63,112 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
         );
       },
     );
+  }
+
+  void _showRelevantItems(CartItem cartItem) {
+    // Get the category and name of the selected item
+    String selectedCategory = cartItem.item.category;
+    String selectedItemName = cartItem.item.name.toLowerCase();
+
+    // Filter items based on the selected item's category and exclude the selected item
+    List<GroceryItem> relevantItems = groceryItems.where((item) {
+      return item.category.toLowerCase() == selectedCategory.toLowerCase() &&
+          item.name.toLowerCase() !=
+              selectedItemName; // Exclude the selected item
+    }).toList();
+
+    // Sort items by name relevance and then by price
+    relevantItems.sort((a, b) {
+      // Calculate name relevance for both items
+      int relevanceA =
+          _calculateNameRelevance(a.name.toLowerCase(), selectedItemName);
+      int relevanceB =
+          _calculateNameRelevance(b.name.toLowerCase(), selectedItemName);
+
+      // First sort by name relevance (lower value means more relevant)
+      if (relevanceA != relevanceB) {
+        return relevanceA.compareTo(relevanceB);
+      }
+
+      // If name relevance is the same, sort by price (ascending)
+      return a.price.compareTo(b.price);
+    });
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+          child: Container(
+            width: 300,
+            height: 400,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Relevant Items for ${cartItem.item.name}',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 16),
+                  Expanded(
+                    child: ListView(
+                      children: relevantItems.map((item) {
+                        return ListTile(
+                          title: Text(item.name),
+                          subtitle: Text(
+                              '${item.category} - Peso ${item.price.toStringAsFixed(2)}'),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Close the dialog
+                    },
+                    child: Text('Close'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  int _calculateNameRelevance(String itemName, String selectedItemName) {
+    // Use a simple method to determine name relevance
+    if (itemName == selectedItemName) {
+      return 0; // Exact match
+    }
+
+    if (itemName.contains(selectedItemName)) {
+      return 1; // Partial match
+    }
+
+    // Calculate partial relevance based on common words
+    List<String> selectedWords = selectedItemName.split(' ');
+    int matchCount =
+        selectedWords.where((word) => itemName.contains(word)).length;
+
+    if (matchCount > 0) {
+      return 2; // Partially relevant
+    }
+
+    return 3; // Least relevant
+  }
+
+  void _updateAddedItems(List<CartItem> items) {
+    setState(() {
+      _addedItems = items;
+      _totalAmount = _addedItems.fold(
+          0, (sum, item) => sum + item.item.price * item.quantity);
+    });
   }
 
   @override
@@ -186,80 +220,55 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
                 style: TextStyle(color: Colors.red),
               ),
             SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _filterItems, // Filter items as you type
-                    decoration: InputDecoration(
-                      hintText: 'Search',
-                      prefixIcon: Icon(Icons.search),
-                      suffixIcon: IconButton(
-                        icon: Icon(Icons.filter_list),
-                        onPressed: () {
-                          // Logic for filtering categories
-                        },
+            // Add Item Button
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  // Navigate to the item selection page
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ItemSelectionPage(
+                        addedItems: _addedItems,
+                        onItemsAdded: _updateAddedItems, // Update added items
                       ),
-                      border: OutlineInputBorder(),
                     ),
-                  ),
-                ),
-              ],
+                  );
+                },
+                child: Text('Add Item'),
+              ),
             ),
             SizedBox(height: 16),
             Expanded(
-              child: Column(
+              child: ListView(
                 children: [
-                  Expanded(
-                    child: _filteredItems.isEmpty &&
-                            _searchController.text.isNotEmpty
-                        ? Center(child: Text('No items found'))
-                        : ListView(
+                  ..._addedItems.map((cartItem) {
+                    return ListTile(
+                      onTap: () => _showRelevantItems(
+                          cartItem), // Show relevant items when tapped
+                      title: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(cartItem.item.name),
+                          Row(
                             children: [
-                              ..._filteredItems.map((item) {
-                                return ListTile(
-                                  title: Text(item.name),
-                                  subtitle: Text(
-                                      '${item.category} - Peso ${item.price.toStringAsFixed(2)}'),
-                                  trailing: IconButton(
-                                    icon: Icon(Icons.add),
-                                    onPressed: () => _showQuantityDialog(
-                                        item), // Show dialog on button press
-                                  ),
-                                );
-                              }),
-                              ..._addedItems.map((cartItem) {
-                                return ListTile(
-                                  title: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(cartItem.item.name),
-                                      Row(
-                                        children: [
-                                          IconButton(
-                                            icon: Icon(Icons.remove),
-                                            onPressed: () =>
-                                                _decreaseQuantity(cartItem),
-                                          ),
-                                          Text('${cartItem.quantity}'),
-                                          IconButton(
-                                            icon: Icon(Icons.add),
-                                            onPressed: () =>
-                                                _increaseQuantity(cartItem),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  subtitle: Text(
-                                      'Total: Peso ${(cartItem.item.price * cartItem.quantity).toStringAsFixed(2)}'),
-                                );
-                              }),
+                              IconButton(
+                                icon: Icon(Icons.remove),
+                                onPressed: () => _decreaseQuantity(cartItem),
+                              ),
+                              Text('${cartItem.quantity}'),
+                              IconButton(
+                                icon: Icon(Icons.add),
+                                onPressed: () => _increaseQuantity(cartItem),
+                              ),
                             ],
                           ),
-                  ),
+                        ],
+                      ),
+                      subtitle: Text(
+                          'Total: Peso ${(cartItem.item.price * cartItem.quantity).toStringAsFixed(2)}'),
+                    );
+                  }),
                 ],
               ),
             ),
