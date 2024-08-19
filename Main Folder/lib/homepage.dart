@@ -1,53 +1,55 @@
 import 'package:flutter/material.dart';
-import 'categories.dart'; // Import the file with the grocery items and CartItem class
+import 'categories.dart'; // Import the file with the grocery items and quantityItem class
 import 'searchItem.dart';
+import 'checkout.dart';
 
-class GroceryHomePage extends StatefulWidget {
+class HomePage extends StatefulWidget {
   @override
   _GroceryHomePageState createState() => _GroceryHomePageState();
 }
 
-class _GroceryHomePageState extends State<GroceryHomePage> {
+class _GroceryHomePageState extends State<HomePage> {
   final TextEditingController _budgetController = TextEditingController();
   double _totalAmount = 0.0;
 
-  List<CartItem> _addedItems =
+  List<quantityItem> _addedItems =
       []; // List to hold added items and their quantities
 
-  void _increaseQuantity(CartItem cartItem) {
+  void _increaseQuantity(quantityItem quantityItem) {
     setState(() {
-      cartItem.quantity++;
-      _totalAmount += cartItem.item.price; // Update total amount
+      quantityItem.quantity++;
+      _totalAmount += quantityItem.item.price; // Update total amount
     });
   }
 
-  void _decreaseQuantity(CartItem cartItem) {
-    if (cartItem.quantity > 1) {
+  void _decreaseQuantity(quantityItem quantityItem) {
+    if (quantityItem.quantity > 1) {
       setState(() {
-        cartItem.quantity--;
-        _totalAmount -= cartItem.item.price; // Update total amount
+        quantityItem.quantity--;
+        _totalAmount -= quantityItem.item.price; // Update total amount
       });
     } else {
       // Show confirmation dialog to remove the item
-      _showRemoveConfirmationDialog(cartItem);
+      _showRemoveConfirmationDialog(quantityItem);
     }
   }
 
-  void _showRemoveConfirmationDialog(CartItem cartItem) {
+  void _showRemoveConfirmationDialog(quantityItem quantityItem) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Remove Item'),
           content: Text(
-              'Are you sure you want to remove ${cartItem.item.name} from the cart?'),
+              'Are you sure you want to remove ${quantityItem.item.name} from the cart?'),
           actions: [
             TextButton(
               onPressed: () {
                 setState(() {
-                  _totalAmount -= cartItem.item.price *
-                      cartItem.quantity; // Update total amount
-                  _addedItems.remove(cartItem); // Remove the item from the cart
+                  _totalAmount -= quantityItem.item.price *
+                      quantityItem.quantity; // Update total amount
+                  _addedItems
+                      .remove(quantityItem); // Remove the item from the cart
                 });
                 Navigator.of(context).pop(); // Close the dialog
               },
@@ -65,10 +67,10 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
     );
   }
 
-  void _showRelevantItems(CartItem cartItem) {
+  void _showRelevantItems(quantityItem quantityItem) {
     // Get the category and name of the selected item
-    String selectedCategory = cartItem.item.category;
-    String selectedItemName = cartItem.item.name.toLowerCase();
+    String selectedCategory = quantityItem.item.category;
+    String selectedItemName = quantityItem.item.name.toLowerCase();
 
     // Filter items based on the selected item's category and exclude the selected item
     List<GroceryItem> relevantItems = groceryItems.where((item) {
@@ -110,7 +112,7 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Relevant Items for ${cartItem.item.name}',
+                    'Relevant Items for ${quantityItem.item.name}',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 16),
@@ -120,7 +122,7 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
                         return ListTile(
                           title: Text(item.name),
                           subtitle: Text(
-                              '${item.category} - Peso ${item.price.toStringAsFixed(2)}'),
+                              '${item.category} - P${item.price.toStringAsFixed(2)}'),
                         );
                       }).toList(),
                     ),
@@ -163,7 +165,7 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
     return 3; // Least relevant
   }
 
-  void _updateAddedItems(List<CartItem> items) {
+  void _updateAddedItems(List<quantityItem> items) {
     setState(() {
       _addedItems = items;
       _totalAmount = _addedItems.fold(
@@ -208,7 +210,7 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
             SizedBox(height: 16),
             // Display remaining budget
             Text(
-              'Remaining Budget: Peso ${remainingBudget.toStringAsFixed(2)}',
+              'Remaining Budget: P${remainingBudget.toStringAsFixed(2)}',
               style: TextStyle(
                 color: remainingBudget < 0 ? Colors.red : Colors.black,
                 fontWeight: FontWeight.bold,
@@ -228,7 +230,7 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ItemSelectionPage(
+                      builder: (context) => Searchitem(
                         addedItems: _addedItems,
                         onItemsAdded: _updateAddedItems, // Update added items
                       ),
@@ -242,31 +244,33 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
             Expanded(
               child: ListView(
                 children: [
-                  ..._addedItems.map((cartItem) {
+                  ..._addedItems.map((quantityItem) {
                     return ListTile(
                       onTap: () => _showRelevantItems(
-                          cartItem), // Show relevant items when tapped
+                          quantityItem), // Show relevant items when tapped
                       title: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(cartItem.item.name),
+                          Text(quantityItem.item.name),
                           Row(
                             children: [
                               IconButton(
                                 icon: Icon(Icons.remove),
-                                onPressed: () => _decreaseQuantity(cartItem),
+                                onPressed: () =>
+                                    _decreaseQuantity(quantityItem),
                               ),
-                              Text('${cartItem.quantity}'),
+                              Text('${quantityItem.quantity}'),
                               IconButton(
                                 icon: Icon(Icons.add),
-                                onPressed: () => _increaseQuantity(cartItem),
+                                onPressed: () =>
+                                    _increaseQuantity(quantityItem),
                               ),
                             ],
                           ),
                         ],
                       ),
                       subtitle: Text(
-                          'Total: Peso ${(cartItem.item.price * cartItem.quantity).toStringAsFixed(2)}'),
+                          'Total: P${(quantityItem.item.price * quantityItem.quantity).toStringAsFixed(2)}'),
                     );
                   }),
                 ],
@@ -276,10 +280,28 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Total: Peso ${_totalAmount.toStringAsFixed(2)}'),
+                Text('Total: P${_totalAmount.toStringAsFixed(2)}'),
                 ElevatedButton(
                   onPressed: () {
-                    // Checkout button logic here
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CheckoutPage(
+                          addedItems: _addedItems,
+                          totalAmount: _totalAmount,
+                          onAddressSelected: (String selectedAddress) {
+                            // Handle address selection here
+                            print('Selected address: $selectedAddress');
+                          },
+                          onPaymentMethodSelected:
+                              (String selectedPaymentMethod) {
+                            // Handle payment method selection here
+                            print(
+                                'Selected payment method: $selectedPaymentMethod');
+                          },
+                        ),
+                      ),
+                    );
                   },
                   child: Text('Check Out'),
                 ),

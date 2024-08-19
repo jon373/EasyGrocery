@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'categories.dart'; // Import the file with the grocery items and CartItem class
+import 'categories.dart'; // Import the file with the grocery items and quantityItem class
 
-class ItemSelectionPage extends StatefulWidget {
-  final List<CartItem> addedItems;
-  final Function(List<CartItem>) onItemsAdded;
+class Searchitem extends StatefulWidget {
+  final List<quantityItem> addedItems;
+  final Function(List<quantityItem>) onItemsAdded;
 
-  ItemSelectionPage({required this.addedItems, required this.onItemsAdded});
+  Searchitem({required this.addedItems, required this.onItemsAdded});
 
   @override
-  _ItemSelectionPageState createState() => _ItemSelectionPageState();
+  _SearchitemState createState() => _SearchitemState();
 }
 
-class _ItemSelectionPageState extends State<ItemSelectionPage> {
+class _SearchitemState extends State<Searchitem> {
   final TextEditingController _searchController = TextEditingController();
   List<String> _selectedCategories = [];
   List<GroceryItem> _filteredItems = groceryItems;
@@ -116,13 +116,13 @@ class _ItemSelectionPageState extends State<ItemSelectionPage> {
                 int quantity = int.tryParse(_quantityController.text) ?? 0;
                 if (quantity > 0) {
                   setState(() {
-                    int existingIndex = widget.addedItems
-                        .indexWhere((cartItem) => cartItem.item == item);
+                    int existingIndex = widget.addedItems.indexWhere(
+                        (quantityItem) => quantityItem.item == item);
                     if (existingIndex != -1) {
                       widget.addedItems[existingIndex].quantity += quantity;
                     } else {
                       widget.addedItems
-                          .add(CartItem(item: item, quantity: quantity));
+                          .add(quantityItem(item: item, quantity: quantity));
                     }
                   });
 

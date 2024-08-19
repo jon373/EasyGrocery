@@ -8,11 +8,11 @@ class GroceryItem {
       {required this.name, required this.category, required this.price});
 }
 
-class CartItem {
+class quantityItem {
   final GroceryItem item;
   int quantity;
 
-  CartItem({required this.item, required this.quantity});
+  quantityItem({required this.item, required this.quantity});
 }
 
 final List<GroceryItem> groceryItems = [

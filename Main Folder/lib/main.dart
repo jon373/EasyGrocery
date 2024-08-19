@@ -13,7 +13,7 @@ class EasyGroceryApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.green,
       ),
-      home: GroceryHomePage(),
+      home: HomePage(),
     );
   }
 }
