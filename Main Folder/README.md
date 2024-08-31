@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # test
 
 A new Flutter project.
@@ -15,8 +14,3 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
-=======
-# EasyGrocery
-
-EasyGrocery is our New Venture Project
->>>>>>> c3f91002d5299b1f7c4a70e315c492159fe43f27
