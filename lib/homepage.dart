@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'categories.dart'; // Import the file with the grocery items and CartItem class
+import 'categories.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'smart_calendar.dart';
 
 class GroceryHomePage extends StatefulWidget {
   @override
@@ -44,7 +46,7 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
           title: Text('Adjust Quantity for ${item.name}'),
           content: TextField(
             controller: _quantityController,
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               hintText: 'Enter quantity',
               border: OutlineInputBorder(),
             ),
@@ -55,7 +57,7 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
               onPressed: () {
                 Navigator.of(context).pop(); // Close the dialog
               },
-              child: Text('Cancel'),
+              child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () {
@@ -71,7 +73,8 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
                           quantity; // Increase the quantity
                     } else {
                       // Add the item and quantity to the added items list
-                      _addedItems.add(CartItem(item: item, quantity: quantity));
+                      _addedItems.add(CartItem(
+                          item: item, quantity: quantity, dailyConsumption: 3));
                     }
                     _totalAmount +=
                         item.price * quantity; // Update total amount
@@ -79,7 +82,7 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
                   Navigator.of(context).pop(); // Close the dialog
                 }
               },
-              child: Text('Add to Cart'),
+              child: const Text('Add to Cart'),
             ),
           ],
         );
@@ -111,7 +114,7 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Remove Item'),
+          title: const Text('Remove Item'),
           content: Text(
               'Are you sure you want to remove ${cartItem.item.name} from the cart?'),
           actions: [
@@ -123,13 +126,13 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
                 });
                 Navigator.of(context).pop(); // Close the dialog
               },
-              child: Text('Yes'),
+              child: const Text('Yes'),
             ),
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close the dialog
               },
-              child: Text('No'),
+              child: const Text('No'),
             ),
           ],
         );
@@ -146,138 +149,239 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('EasyGrocery'),
+        elevation: 0,
+        backgroundColor: const Color(0xFFfbf7f4),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      drawer: const Drawer(),
+      backgroundColor: const Color(0xFFdbdbdb),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Container for "EasyGrocery" text
+          Container(
+            width:
+                MediaQuery.of(context).size.width, // Full width of the screen
+            decoration: const BoxDecoration(
+              color: Color(0xFFfbf7f4),
+              border: Border(
+                bottom: BorderSide(
+                  color: Color(0xFF313638),
+                  width: 1.0,
+                ),
+              ),
+            ),
+            padding: const EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 0,
+              bottom: 10,
+            ),
+            child: Row(
+              mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween, // Space between text and icon
               children: [
-                Text('Budget: '),
-                Expanded(
-                  child: TextField(
-                    controller: _budgetController,
-                    decoration: InputDecoration(
-                      hintText: 'Enter your budget',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) {
-                      setState(() {}); // Update the UI when the budget changes
-                    },
+                Text(
+                  'EasyGrocery',
+                  style: GoogleFonts.dmSerifText(
+                    color: const Color(0xFF313638),
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ],
-            ),
-            SizedBox(height: 16),
-            // Display remaining budget
-            Text(
-              'Remaining Budget: Peso ${remainingBudget.toStringAsFixed(2)}',
-              style: TextStyle(
-                color: remainingBudget < 0 ? Colors.red : Colors.black,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            if (remainingBudget < 0)
-              Text(
-                'You have exceeded your budget!',
-                style: TextStyle(color: Colors.red),
-              ),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _filterItems, // Filter items as you type
-                    decoration: InputDecoration(
-                      hintText: 'Search',
-                      prefixIcon: Icon(Icons.search),
-                      suffixIcon: IconButton(
-                        icon: Icon(Icons.filter_list),
-                        onPressed: () {
-                          // Logic for filtering categories
-                        },
+                IconButton(
+                  icon: const Icon(Icons.calendar_today),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            SmartCalendarPage(addedItems: _addedItems),
                       ),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ],
             ),
-            SizedBox(height: 16),
-            Expanded(
+          ),
+
+          // Add a Divider or custom decorated container
+          Container(
+            width: double.infinity, // Full width of the screen
+            height: .5, // Height of the decoration
+            color: const Color(0xFF93827f), // Customize the color
+          ),
+
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: _filteredItems.isEmpty &&
-                            _searchController.text.isNotEmpty
-                        ? Center(child: Text('No items found'))
-                        : ListView(
-                            children: [
-                              ..._filteredItems.map((item) {
-                                return ListTile(
-                                  title: Text(item.name),
-                                  subtitle: Text(
-                                      '${item.category} - Peso ${item.price.toStringAsFixed(2)}'),
-                                  trailing: IconButton(
-                                    icon: Icon(Icons.add),
-                                    onPressed: () => _showQuantityDialog(
-                                        item), // Show dialog on button press
-                                  ),
-                                );
-                              }),
-                              ..._addedItems.map((cartItem) {
-                                return ListTile(
-                                  title: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(cartItem.item.name),
-                                      Row(
-                                        children: [
-                                          IconButton(
-                                            icon: Icon(Icons.remove),
-                                            onPressed: () =>
-                                                _decreaseQuantity(cartItem),
-                                          ),
-                                          Text('${cartItem.quantity}'),
-                                          IconButton(
-                                            icon: Icon(Icons.add),
-                                            onPressed: () =>
-                                                _increaseQuantity(cartItem),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  subtitle: Text(
-                                      'Total: Peso ${(cartItem.item.price * cartItem.quantity).toStringAsFixed(2)}'),
-                                );
-                              }),
-                            ],
+                  // Budget text input
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _budgetController,
+                          decoration: const InputDecoration(
+                            hintText: 'Enter Budget',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Color(0xFFEFEFEF),
                           ),
+                          keyboardType: TextInputType.number,
+                          onChanged: (value) {
+                            setState(
+                                () {}); // Update the UI when the budget changes
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Display remaining budget
+                  Text(
+                    'Remaining Budget: Peso ${remainingBudget.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: remainingBudget < 0 ? Colors.red : Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (remainingBudget < 0)
+                    const Text(
+                      'You have exceeded your budget!',
+                      style: TextStyle(color: Colors.red),
+                    ),
+
+                  const SizedBox(height: 16),
+
+                  // Search input
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: _filterItems, // Filter items as you type
+                          decoration: const InputDecoration(
+                            hintText: 'Search',
+                            filled: true, // Enables the background color
+                            fillColor: Color(0xFFEFEFEF),
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(
+                          width: 8), // Space between TextField and IconButton
+                      Container(
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEFEFEF), // Background color
+                          shape: BoxShape.circle, // Make the container circular
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.filter_list),
+                          onPressed: () {
+                            // Logic for filtering categories
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Expanded list of items
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: _filteredItems.isEmpty &&
+                                  _searchController.text.isNotEmpty
+                              ? const Center(child: Text('No items found'))
+                              : ListView(
+                                  children: [
+                                    ..._filteredItems.map((item) {
+                                      return ListTile(
+                                        title: Text(item.name),
+                                        subtitle: Text(
+                                          '${item.category} - Peso ${item.price.toStringAsFixed(2)}',
+                                        ),
+                                        trailing: IconButton(
+                                          icon: const Icon(Icons.add),
+                                          onPressed: () => _showQuantityDialog(
+                                              item), // Show dialog on button press
+                                        ),
+                                      );
+                                    }),
+                                    ..._addedItems.map((cartItem) {
+                                      return Container(
+                                        decoration: BoxDecoration(
+                                          color: const Color(
+                                              0xFFEFEFEF), // Set your desired background color here
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                        ),
+                                        margin:
+                                            const EdgeInsets.only(bottom: 10),
+                                        child: ListTile(
+                                          title: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(cartItem.item.name),
+                                              Row(
+                                                children: [
+                                                  IconButton(
+                                                    icon: const Icon(
+                                                        Icons.remove),
+                                                    onPressed: () =>
+                                                        _decreaseQuantity(
+                                                            cartItem),
+                                                  ),
+                                                  Text('${cartItem.quantity}'),
+                                                  IconButton(
+                                                    icon: const Icon(Icons.add),
+                                                    onPressed: () =>
+                                                        _increaseQuantity(
+                                                            cartItem),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                          subtitle: Text(
+                                            'Total: Peso ${(cartItem.item.price * cartItem.quantity).toStringAsFixed(2)}',
+                                          ),
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Total and checkout button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Total: Peso ${_totalAmount.toStringAsFixed(2)}'),
+                      ElevatedButton(
+                        onPressed: () {
+                          // Checkout button logic here
+                        },
+                        child: const Text('Check Out'),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Total: Peso ${_totalAmount.toStringAsFixed(2)}'),
-                ElevatedButton(
-                  onPressed: () {
-                    // Checkout button logic here
-                  },
-                  child: Text('Check Out'),
-                ),
-              ],
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

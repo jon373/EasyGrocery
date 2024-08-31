@@ -11,8 +11,12 @@ class GroceryItem {
 class CartItem {
   final GroceryItem item;
   int quantity;
+  int dailyConsumption; // Add this field
 
-  CartItem({required this.item, required this.quantity});
+  CartItem(
+      {required this.item,
+      required this.quantity,
+      required this.dailyConsumption});
 }
 
 final List<GroceryItem> groceryItems = [
