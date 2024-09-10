@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/fluuter.iml" filepath="$PROJECT_DIR$/.idea/fluuter.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/EasyGrocery.iml" filepath="$PROJECT_DIR$/.idea/EasyGrocery.iml" />
     </modules>
   </component>
 </project>

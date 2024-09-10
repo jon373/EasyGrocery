@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'categories.dart';
 
 class SmartCalendarPage extends StatefulWidget {
-  final List<CartItem> addedItems;
+  final List<quantityItem> addedItems;
 
   SmartCalendarPage({required this.addedItems});
 

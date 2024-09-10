@@ -1,168 +1,260 @@
 import 'package:flutter/material.dart';
-import 'categories.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'categories.dart'; // Import the file with the grocery items and quantityItem class
+import 'searchItem.dart';
+import 'checkout.dart';
 import 'smart_calendar.dart';
+import 'package:flutter/services.dart';
+import 'format _number.dart';
 
-class GroceryHomePage extends StatefulWidget {
+class HomePage extends StatefulWidget {
   @override
   _GroceryHomePageState createState() => _GroceryHomePageState();
 }
 
-class _GroceryHomePageState extends State<GroceryHomePage> {
+class _GroceryHomePageState extends State<HomePage> {
   final TextEditingController _budgetController = TextEditingController();
-  final TextEditingController _searchController = TextEditingController();
   double _totalAmount = 0.0;
-
-  List<CartItem> _addedItems =
+  List<quantityItem> _addedItems =
       []; // List to hold added items and their quantities
-  List<GroceryItem> _filteredItems = [];
+
+  String? _selectedStore;
+  List<String> _storeList = [
+    'Store A',
+    'Store B',
+    'Store C',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _filteredItems = []; // Start with an empty list
+    _selectedStore = null; // Set a default store if available
   }
 
-  void _filterItems(String query) {
+  void _increaseQuantity(quantityItem quantityItem) {
     setState(() {
-      if (query.isEmpty) {
-        _filteredItems = []; // Show no items if query is empty
-      } else {
-        _filteredItems = groceryItems
-            .where(
-                (item) => item.name.toLowerCase().contains(query.toLowerCase()))
-            .toList();
-      }
+      quantityItem.quantity++;
+      _totalAmount += quantityItem.item.price; // Update total amount
     });
   }
 
-  void _showQuantityDialog(GroceryItem item) {
-    final TextEditingController _quantityController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Adjust Quantity for ${item.name}'),
-          content: TextField(
-            controller: _quantityController,
-            decoration: const InputDecoration(
-              hintText: 'Enter quantity',
-              border: OutlineInputBorder(),
-            ),
-            keyboardType: TextInputType.number,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                int quantity = int.tryParse(_quantityController.text) ?? 0;
-                if (quantity > 0) {
-                  setState(() {
-                    // Check if the item already exists in the added items list
-                    int existingIndex = _addedItems
-                        .indexWhere((cartItem) => cartItem.item == item);
-                    if (existingIndex != -1) {
-                      // Update the quantity for the existing item
-                      _addedItems[existingIndex].quantity +=
-                          quantity; // Increase the quantity
-                    } else {
-                      // Add the item and quantity to the added items list
-                      _addedItems.add(CartItem(
-                          item: item, quantity: quantity, dailyConsumption: 3));
-                    }
-                    _totalAmount +=
-                        item.price * quantity; // Update total amount
-                  });
-                  Navigator.of(context).pop(); // Close the dialog
-                }
-              },
-              child: const Text('Add to Cart'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _increaseQuantity(CartItem cartItem) {
-    setState(() {
-      cartItem.quantity++;
-      _totalAmount += cartItem.item.price; // Update total amount
-    });
-  }
-
-  void _decreaseQuantity(CartItem cartItem) {
-    if (cartItem.quantity > 1) {
+  void _decreaseQuantity(quantityItem quantityItem) {
+    if (quantityItem.quantity > 1) {
       setState(() {
-        cartItem.quantity--;
-        _totalAmount -= cartItem.item.price; // Update total amount
+        quantityItem.quantity--;
+        _totalAmount -= quantityItem.item.price; // Update total amount
       });
     } else {
       // Show confirmation dialog to remove the item
-      _showRemoveConfirmationDialog(cartItem);
+      _showRemoveConfirmationDialog(quantityItem);
     }
   }
 
-  void _showRemoveConfirmationDialog(CartItem cartItem) {
+  void _showRemoveConfirmationDialog(quantityItem quantityItem) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Remove Item'),
+          title: Text('Remove Item'),
           content: Text(
-              'Are you sure you want to remove ${cartItem.item.name} from the cart?'),
+              'Are you sure you want to remove ${quantityItem.item.name} from the cart?'),
           actions: [
             TextButton(
               onPressed: () {
                 setState(() {
-                  _totalAmount -= cartItem.item.price; // Update total amount
-                  _addedItems.remove(cartItem); // Remove the item from the cart
+                  _totalAmount -= quantityItem.item.price *
+                      quantityItem.quantity; // Update total amount
+                  _addedItems
+                      .remove(quantityItem); // Remove the item from the cart
                 });
                 Navigator.of(context).pop(); // Close the dialog
               },
-              child: const Text('Yes'),
+              child: Text('Yes'),
             ),
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close the dialog
               },
-              child: const Text('No'),
+              child: Text('No'),
             ),
           ],
         );
       },
     );
+  }
+
+  void _showRelevantItems(quantityItem selectedItem) {
+    String selectedCategory = selectedItem.item.category;
+    String selectedItemName = selectedItem.item.name.toLowerCase();
+
+    // Filter items based on the selected item's category and exclude the selected item
+    List<GroceryItem> relevantItems = groceryItems.where((item) {
+      return item.category.toLowerCase() == selectedCategory.toLowerCase() &&
+          item.name.toLowerCase() != selectedItemName;
+    }).toList();
+
+    // Sort items by name relevance and then by price
+    relevantItems.sort((a, b) {
+      int relevanceA =
+          _calculateNameRelevance(a.name.toLowerCase(), selectedItemName);
+      int relevanceB =
+          _calculateNameRelevance(b.name.toLowerCase(), selectedItemName);
+
+      if (relevanceA != relevanceB) {
+        return relevanceA.compareTo(relevanceB);
+      }
+      return a.price.compareTo(b.price);
+    });
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+          child: Container(
+            width: 300,
+            height: 400,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Relevant Items for ${selectedItem.item.name}',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 16),
+                  Expanded(
+                    child: ListView(
+                      children: relevantItems.map((item) {
+                        return ListTile(
+                          title: Text(item.name),
+                          subtitle: Text(
+                              '${item.category} - P${item.price.toStringAsFixed(2)}'),
+                          onTap: () {
+                            setState(() {
+                              // Replace the current item in the list
+                              selectedItem.item = item;
+                              // Update the added items to reflect the change and recalculate the total
+                              _updateAddedItems(_addedItems);
+                            });
+                            Navigator.of(context).pop(); // Close the dialog
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Close the dialog
+                    },
+                    child: Text('Close'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  int _calculateNameRelevance(String itemName, String selectedItemName) {
+    if (itemName == selectedItemName) {
+      return 0; // Exact match
+    }
+
+    if (itemName.contains(selectedItemName)) {
+      return 1; // Partial match
+    }
+
+    List<String> selectedWords = selectedItemName.split(' ');
+    int matchCount =
+        selectedWords.where((word) => itemName.contains(word)).length;
+
+    if (matchCount > 0) {
+      return 2; // Partially relevant
+    }
+
+    return 3; // Least relevant
+  }
+
+  void _updateAddedItems(List<quantityItem> items) {
+    setState(() {
+      _addedItems = items;
+      _totalAmount = _addedItems.fold(
+        0,
+        (sum, item) => sum + item.item.price * item.quantity,
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     // Parse the budget from the text field
-    double budget = double.tryParse(_budgetController.text) ?? 0.0;
-    double remainingBudget =
-        budget - _totalAmount; // Calculate remaining budget
+    String budgetText = _budgetController.text.replaceAll(',', '');
+    double budget = double.tryParse(budgetText) ?? 0.0;
+    double remainingBudget = budget - _totalAmount;
 
+    // Calculate remaining budget
     return Scaffold(
+      backgroundColor: Color(0xFFEEECE6),
       appBar: AppBar(
+        backgroundColor: Color(0xFFEEECE6),
+        leading: Builder(
+          builder: (BuildContext context) {
+            return IconButton(
+              icon: Icon(Icons.menu),
+              color: Color(0xFFBD4254),
+              iconSize: 36.0,
+              onPressed: () {
+                Scaffold.of(context).openDrawer(); // Open the drawer
+              },
+            );
+          },
+        ),
         elevation: 0,
-        backgroundColor: const Color(0xFFfbf7f4),
+        toolbarHeight: 50,
       ),
-      drawer: const Drawer(),
-      backgroundColor: const Color(0xFFdbdbdb),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            DrawerHeader(
+              child: Text('Menu',
+                  style: TextStyle(color: Colors.white, fontSize: 24)),
+              decoration: BoxDecoration(
+                color: Colors.blue,
+              ),
+            ),
+            ListTile(
+              title: Text('Home'),
+              onTap: () {
+                Navigator.pop(context); // Close the drawer
+              },
+            ),
+            ListTile(
+              title: Text('Settings'),
+              onTap: () {
+                Navigator.pop(context); // Close the drawer
+              },
+            ),
+            ListTile(
+              title: Text('About'),
+              onTap: () {
+                Navigator.pop(context); // Close the drawer
+              },
+            ),
+          ],
+        ),
+      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Container for "EasyGrocery" text
           Container(
-            width:
-                MediaQuery.of(context).size.width, // Full width of the screen
             decoration: const BoxDecoration(
-              color: Color(0xFFfbf7f4),
               border: Border(
                 bottom: BorderSide(
                   color: Color(0xFF313638),
@@ -170,215 +262,409 @@ class _GroceryHomePageState extends State<GroceryHomePage> {
                 ),
               ),
             ),
-            padding: const EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 0,
-              bottom: 10,
-            ),
-            child: Row(
-              mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween, // Space between text and icon
-              children: [
-                Text(
-                  'EasyGrocery',
-                  style: GoogleFonts.dmSerifText(
-                    color: const Color(0xFF313638),
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.calendar_today),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            SmartCalendarPage(addedItems: _addedItems),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-
-          // Add a Divider or custom decorated container
-          Container(
-            width: double.infinity, // Full width of the screen
-            height: .5, // Height of the decoration
-            color: const Color(0xFF93827f), // Customize the color
-          ),
-
-          Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 0,
+                bottom: 10,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Budget text input
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _budgetController,
-                          decoration: const InputDecoration(
-                            hintText: 'Enter Budget',
-                            border: OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Color(0xFFEFEFEF),
-                          ),
-                          keyboardType: TextInputType.number,
-                          onChanged: (value) {
-                            setState(
-                                () {}); // Update the UI when the budget changes
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Display remaining budget
-                  Text(
-                    'Remaining Budget: Peso ${remainingBudget.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      color: remainingBudget < 0 ? Colors.red : Colors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (remainingBudget < 0)
-                    const Text(
-                      'You have exceeded your budget!',
-                      style: TextStyle(color: Colors.red),
-                    ),
-
-                  const SizedBox(height: 16),
-
-                  // Search input
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: _filterItems, // Filter items as you type
-                          decoration: const InputDecoration(
-                            hintText: 'Search',
-                            filled: true, // Enables the background color
-                            fillColor: Color(0xFFEFEFEF),
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(
-                          width: 8), // Space between TextField and IconButton
-                      Container(
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFEFEFEF), // Background color
-                          shape: BoxShape.circle, // Make the container circular
-                        ),
-                        child: IconButton(
-                          icon: const Icon(Icons.filter_list),
-                          onPressed: () {
-                            // Logic for filtering categories
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Expanded list of items
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: _filteredItems.isEmpty &&
-                                  _searchController.text.isNotEmpty
-                              ? const Center(child: Text('No items found'))
-                              : ListView(
-                                  children: [
-                                    ..._filteredItems.map((item) {
-                                      return ListTile(
-                                        title: Text(item.name),
-                                        subtitle: Text(
-                                          '${item.category} - Peso ${item.price.toStringAsFixed(2)}',
-                                        ),
-                                        trailing: IconButton(
-                                          icon: const Icon(Icons.add),
-                                          onPressed: () => _showQuantityDialog(
-                                              item), // Show dialog on button press
-                                        ),
-                                      );
-                                    }),
-                                    ..._addedItems.map((cartItem) {
-                                      return Container(
-                                        decoration: BoxDecoration(
-                                          color: const Color(
-                                              0xFFEFEFEF), // Set your desired background color here
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                        ),
-                                        margin:
-                                            const EdgeInsets.only(bottom: 10),
-                                        child: ListTile(
-                                          title: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(cartItem.item.name),
-                                              Row(
-                                                children: [
-                                                  IconButton(
-                                                    icon: const Icon(
-                                                        Icons.remove),
-                                                    onPressed: () =>
-                                                        _decreaseQuantity(
-                                                            cartItem),
-                                                  ),
-                                                  Text('${cartItem.quantity}'),
-                                                  IconButton(
-                                                    icon: const Icon(Icons.add),
-                                                    onPressed: () =>
-                                                        _increaseQuantity(
-                                                            cartItem),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                          subtitle: Text(
-                                            'Total: Peso ${(cartItem.item.price * cartItem.quantity).toStringAsFixed(2)}',
-                                          ),
-                                        ),
-                                      );
-                                    }),
-                                  ],
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Total and checkout button
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Total: Peso ${_totalAmount.toStringAsFixed(2)}'),
-                      ElevatedButton(
-                        onPressed: () {
-                          // Checkout button logic here
-                        },
-                        child: const Text('Check Out'),
+                      Text(
+                        'Easy Grocery',
+                        style: TextStyle(
+                          fontFamily: 'Raleway-Bold',
+                          fontWeight: FontWeight.w400,
+                          fontSize: 40,
+                          color: Colors.black,
+                        ),
                       ),
+                      IconButton(
+                        icon: const Icon(Icons.calendar_today),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  SmartCalendarPage(addedItems: _addedItems),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 25), // Space between the title and TextField
+
+                  // Row containing TextField and DropdownButton
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(
+                              color: Color(0xFFA79B95), // Border color
+                              width: 2.0,
+                            ),
+                            borderRadius: BorderRadius.circular(5.0),
+                          ),
+                          child: Stack(
+                            children: [
+                              Positioned(
+                                left: 5.0,
+                                top: 15.0, // Adjust this value as needed
+                                child: Text(
+                                  'Budget:',
+                                  style: const TextStyle(
+                                    color: Color(0xFFA0616A), // Text color
+                                    fontSize: 14.0,
+                                    fontFamily: 'Poppins-Regular',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              TextField(
+                                controller: _budgetController,
+                                style: const TextStyle(
+                                  color: Color(0xFFA0616A), // Text color
+                                  fontSize: 16.0,
+                                  fontFamily: 'Poppins-Regular',
+                                  fontWeight: FontWeight.w400,
+                                ),
+                                decoration: InputDecoration(
+                                  contentPadding: const EdgeInsets.only(
+                                    left:
+                                        57.0, // Adjust this value to align with "Budget: "
+                                    top: 10.0,
+                                    bottom: 10.0,
+                                  ),
+                                  border: InputBorder.none,
+                                  suffixIcon: IconButton(
+                                    icon: ImageIcon(
+                                      AssetImage(
+                                          'assets/images/enter_icon.png'),
+                                      color: Colors.grey,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        FocusScope.of(context).unfocus();
+                                      });
+                                    },
+                                  ),
+                                ),
+                                keyboardType: TextInputType.number,
+                                onChanged: (value) {
+                                  setState(() {});
+                                },
+                                inputFormatters: [
+                                  FilteringTextInputFormatter
+                                      .digitsOnly, // Allow only numeric input
+                                  ThousandsSeparatorInputFormatter(), // Add thousands separators
+                                  LengthLimitingTextInputFormatter(
+                                      6), // Limit to 10 characters
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Container(
+                        width: 180, // Fixed width or adjust as needed
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(
+                            color: Color(0xFFA79B95), // Border color
+                            width: 2.0,
+                          ),
+                          borderRadius: BorderRadius.circular(5.0),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            hint: Text(
+                              'Select Store',
+                              style: TextStyle(
+                                color: Color(0xFFA0616A), // Hint text color
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                            value: _selectedStore,
+                            items: [
+                              DropdownMenuItem<String>(
+                                value: null, // No value initially selected
+                                child: Text(
+                                  'Select Store',
+                                  style: TextStyle(
+                                    color:
+                                        Colors.grey.shade600, // Hint text color
+                                    fontWeight:
+                                        FontWeight.w400, // Lighter font weight
+                                  ),
+                                ),
+                              ),
+                              ..._storeList.map((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(
+                                    value,
+                                    style: TextStyle(
+                                      color:
+                                          Color(0xFFBD4254), // Item text color
+                                      fontWeight:
+                                          FontWeight.w500, // Font weight
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ],
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                _selectedStore = newValue;
+                              });
+                            },
+                            isExpanded: true,
+                            icon: Icon(
+                              Icons.arrow_drop_down,
+                              color: Color(0xFFBD4254), // Icon color
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 1.0),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Remaining Budget: ₱${currencyFormat.format(remainingBudget)}',
+                            style: TextStyle(
+                              fontFamily: 'Poppins-Regular',
+                              color: remainingBudget < 0
+                                  ? Colors.red
+                                  : Colors.black,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          // "Add Item" button without box border
+                          TextButton(
+                            onPressed: () {
+                              // Navigate to the item selection page
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => Searchitem(
+                                    addedItems: _addedItems,
+                                    onItemsAdded:
+                                        _updateAddedItems, // Update added items
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              'Add Item',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFBD4254),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (remainingBudget < 0)
+                        Text(
+                          'You have exceeded your budget!',
+                          style: TextStyle(
+                              color: Colors.red,
+                              fontFamily: 'Poppins-Regular',
+                              fontWeight: FontWeight.w400),
+                        ),
                     ],
                   ),
                 ],
               ),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              children: [
+                ..._addedItems.map((quantityItem) {
+                  return Container(
+                    margin: const EdgeInsets.symmetric(
+                        vertical: 4.0), // Space between items
+                    padding:
+                        const EdgeInsets.all(8.0), // Padding inside the border
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(
+                          color: Colors.grey,
+                          width: 2.0), // Border width for the item container
+                      borderRadius: BorderRadius.circular(
+                          8.0), // Optional: Rounded corners
+                    ),
+                    child: ListTile(
+                      onTap: () => _showRelevantItems(
+                          quantityItem), // Show relevant items when tapped
+                      title: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            quantityItem.item.name,
+                            style: TextStyle(
+                              fontFamily:
+                                  'Poppins', // Replace with your custom font family
+                              fontSize: 18, // Adjust the font size as needed
+                              fontWeight: FontWeight
+                                  .w600, // Adjust the font weight as needed
+                              color: Colors
+                                  .black, // Adjust the text color as needed
+                            ),
+                          ),
+                          // Box border and background color for quantity controls
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Color(
+                                  0xFFB9ACA6), // Set the background color here
+                              border: Border.all(
+                                  color: Colors.grey,
+                                  width:
+                                      1.0), // Single border around the quantity controls
+                              borderRadius: BorderRadius.circular(
+                                  5.0), // Rounded corners for the border
+                            ),
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  icon: Icon(Icons.remove),
+                                  onPressed: () =>
+                                      _decreaseQuantity(quantityItem),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal:
+                                          8.0), // Padding inside the quantity text container
+                                  child: Text(
+                                    '${quantityItem.quantity}',
+                                    style: TextStyle(
+                                      fontFamily:
+                                          'Poppins', // Replace with your custom font family
+                                      fontWeight: FontWeight.bold,
+                                      fontSize:
+                                          18, // Adjust the font size as needed
+                                      color: Colors
+                                          .black, // Adjust the text color as needed
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.add),
+                                  onPressed: () =>
+                                      _increaseQuantity(quantityItem),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      subtitle: Text(
+                        'Total: ₱${(quantityItem.item.price * quantityItem.quantity).toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontFamily:
+                              'Poppins-Regular', // Replace with your custom font family
+                          fontWeight: FontWeight.w400,
+                          fontSize: 16, // Adjust the font size as needed
+                          color: Colors.grey, // Adjust the text color as needed
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+
+          SizedBox(height: 16), // Space before the checkout row
+
+          // Checkout Row
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 1.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: Colors.grey, width: 2.0),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0, vertical: 8.0),
+                    child: Text(
+                      'Total: ₱${currencyFormat.format(_totalAmount)}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0, vertical: 12.0), // Increase padding
+                  decoration: BoxDecoration(
+                    color: Color(0xFFBD4254),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(10.0),
+                      bottomLeft: Radius.circular(10.0),
+                    ),
+                  ),
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CheckoutPage(
+                            addedItems: _addedItems,
+                            totalAmount: _totalAmount,
+                            onAddressSelected: (String selectedAddress) {
+                              // Handle address selection here
+                              print('Selected address: $selectedAddress');
+                            },
+                            onPaymentMethodSelected:
+                                (String selectedPaymentMethod) {
+                              // Handle payment method selection here
+                              print(
+                                  'Selected payment method: $selectedPaymentMethod');
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'Check Out',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w200,
+                        color: Colors.white,
+                        fontSize: 20, // Increase font size
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      minimumSize: Size(120, 48), // Increase button size
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
