@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
-import 'homepage.dart';
+import 'package:provider/provider.dart';
+import 'cart_provider.dart';
+import 'homepage.dart'; // Your home page or wherever you start your app
 
 void main() {
-  runApp(EasyGroceryApp());
+  runApp(MyApp());
 }
 
-class EasyGroceryApp extends StatelessWidget {
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'EasyGrocery',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Flutter Demo',
+        home: HomePage(),
       ),
-      home: HomePage(),
     );
   }
 }

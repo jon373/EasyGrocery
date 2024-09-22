@@ -42,3 +42,13 @@ final List<String> categories = [
   'Meat',
   // Add more categories here
 ];
+
+class Cart {
+  String name;
+  List<quantityItem> items;
+
+  Cart({
+    required this.name,
+    required this.items,
+  });
+}

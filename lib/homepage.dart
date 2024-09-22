@@ -5,6 +5,9 @@ import 'checkout.dart';
 import 'smart_calendar.dart';
 import 'package:flutter/services.dart';
 import 'format _number.dart';
+import 'carts_screen.dart';
+import 'cart_provider.dart';
+import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -191,6 +194,124 @@ class _GroceryHomePageState extends State<HomePage> {
     });
   }
 
+  List<Cart> _carts = [];
+
+// Show cart selection dialog
+  void _showCartSelection(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: Text('Select a Cart'),
+              content: Consumer<CartProvider>(
+                builder: (context, cartProvider, child) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ...cartProvider.carts
+                          .map((cart) => ListTile(
+                                title: Text(cart.name),
+                                onTap: () {
+                                  Navigator.pop(
+                                      context); // Close the dialog first
+                                  _addItemToCart(context,
+                                      cart); // Add selected items to the cart
+                                  _showSuccessNotification(
+                                      context); // Notify that items were saved
+                                },
+                              ))
+                          .toList(),
+                      ElevatedButton(
+                        onPressed: () {
+                          // Add a new cart
+                          cartProvider
+                              .addCart('Cart ${cartProvider.carts.length + 1}');
+                          setState(
+                              () {}); // This will force the dialog to rebuild
+                        },
+                        child: Text('Add New Cart'),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+// Function to show alert when no items are added
+  void _showNoItemsAlert(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('No Items to Save'),
+          content: Text('Please add items to the cart before saving.'),
+          actions: [
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+// Function to show notification when items are saved
+  void _showSuccessNotification(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Item Added'),
+          content: Text('Items have been successfully saved to the cart.'),
+          actions: [
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.pop(context); // Close the success notification dialog
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+// Modified Function to add selected items to the cart
+  void _addItemToCart(BuildContext context, Cart cart) {
+    // Assuming _addedItems holds the items you want to add to the cart
+    for (var item in _addedItems) {
+      // Ensure _addedItems is accessible here
+      Provider.of<CartProvider>(context, listen: false)
+          .addItemToCart(cart.name, item);
+    }
+  }
+
+// Add this method to add items to a selected cart
+  void _addItemToCartSingle(Cart cart, quantityItem selectedItem) {
+    setState(() {
+      // Add a single selected item to the cart
+      cart.items.add(selectedItem);
+    });
+  }
+
+// Method to add a new cart
+  void _addNewCart() {
+    setState(() {
+      int newCartNumber = _carts.length + 1;
+      _carts.add(Cart(name: 'Cart $newCartNumber', items: []));
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // Parse the budget from the text field
@@ -230,9 +351,13 @@ class _GroceryHomePageState extends State<HomePage> {
               ),
             ),
             ListTile(
-              title: Text('Home'),
+              title: Text('Carts'),
               onTap: () {
-                Navigator.pop(context); // Close the drawer
+                Navigator.pop(context); // Close the drawer first
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => CartsScreen()),
+                );
               },
             ),
             ListTile(
@@ -242,11 +367,10 @@ class _GroceryHomePageState extends State<HomePage> {
               },
             ),
             ListTile(
-              title: Text('About'),
-              onTap: () {
-                Navigator.pop(context); // Close the drawer
-              },
-            ),
+                title: Text('About'),
+                onTap: () {
+                  Navigator.pop(context); // Close the drawer
+                }),
           ],
         ),
       ),
@@ -618,9 +742,9 @@ class _GroceryHomePageState extends State<HomePage> {
                     ),
                   ),
                 ),
+                // Combined Cart and Checkout Buttons
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24.0, vertical: 12.0), // Increase padding
+                  padding: const EdgeInsets.symmetric(vertical: 12.0),
                   decoration: BoxDecoration(
                     color: Color(0xFFBD4254),
                     borderRadius: BorderRadius.only(
@@ -628,45 +752,65 @@ class _GroceryHomePageState extends State<HomePage> {
                       bottomLeft: Radius.circular(10.0),
                     ),
                   ),
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CheckoutPage(
-                            addedItems: _addedItems,
-                            totalAmount: _totalAmount,
-                            onAddressSelected: (String selectedAddress) {
-                              // Handle address selection here
-                              print('Selected address: $selectedAddress');
-                            },
-                            onPaymentMethodSelected:
-                                (String selectedPaymentMethod) {
-                              // Handle payment method selection here
-                              print(
-                                  'Selected payment method: $selectedPaymentMethod');
-                            },
+                  child: Row(
+                    children: [
+                      // Add to Cart Button (updated logic to show cart window)
+                      IconButton(
+                        icon: Icon(Icons.add_shopping_cart,
+                            color: Colors.white), // Updated icon
+                        onPressed: () {
+                          // Show the modal bottom sheet with cart options
+                          _showCartSelection(context);
+                        },
+                      ),
+                      // Divider between Cart and Checkout buttons (optional)
+                      Container(
+                        height: 48, // Adjust as needed
+                        width: 1, // Thin line as a divider
+                        color: Colors.white, // Same color as text
+                      ),
+                      // Check Out Button
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CheckoutPage(
+                                addedItems: _addedItems,
+                                totalAmount: _totalAmount,
+                                onAddressSelected: (String selectedAddress) {
+                                  // Handle address selection here
+                                  print('Selected address: $selectedAddress');
+                                },
+                                onPaymentMethodSelected:
+                                    (String selectedPaymentMethod) {
+                                  // Handle payment method selection here
+                                  print(
+                                      'Selected payment method: $selectedPaymentMethod');
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          'Check Out',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w200,
+                            color: Colors.white,
+                            fontSize: 20, // Increased font size
                           ),
                         ),
-                      );
-                    },
-                    child: Text(
-                      'Check Out',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w200,
-                        color: Colors.white,
-                        fontSize: 20, // Increase font size
+                        style: TextButton.styleFrom(
+                          minimumSize: Size(120, 48), // Increased button size
+                        ),
                       ),
-                    ),
-                    style: TextButton.styleFrom(
-                      minimumSize: Size(120, 48), // Increase button size
-                    ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ),
+          )
         ],
       ),
     );
