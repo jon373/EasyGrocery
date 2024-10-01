@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'categories.dart'; // Import the file with the grocery items and quantityItem class
+import 'package:EasyGrocery/provider/categories.dart';
 
 class Searchitem extends StatefulWidget {
   final List<quantityItem> addedItems;

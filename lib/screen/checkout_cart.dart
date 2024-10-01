@@ -1,35 +1,32 @@
 import 'package:flutter/material.dart';
-import 'categories.dart'; // Import the file with the grocery items and quantityItem class
+import 'package:EasyGrocery/provider/categories.dart';
 
-class CheckoutPage extends StatelessWidget {
-  final List<quantityItem> addedItems;
+class CheckoutPage1 extends StatelessWidget {
+  final List<Cart> carts;
   final double totalAmount;
   final Function(String) onAddressSelected;
   final Function(String) onPaymentMethodSelected;
 
-  CheckoutPage({
-    required this.addedItems,
+  CheckoutPage1({
     required this.totalAmount,
     required this.onAddressSelected,
     required this.onPaymentMethodSelected,
+    required this.carts,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Predefined delivery addresses
+    // Predefined delivery addresses and payment methods
     List<String> deliveryAddresses = [
       '123 Main St, Cityville',
       '456 Maple Ave, Townsville',
-      '789 Oak Rd, Villageville',
+      '789 Oak Rd, Villageville'
     ];
-
-    // Predefined payment methods
     List<String> paymentMethods = [
       'Credit Card',
       'Debit Card',
-      'Cash on Delivery',
+      'Cash on Delivery'
     ];
-
     String? selectedAddress;
     String? selectedPaymentMethod;
 
@@ -49,21 +46,27 @@ class CheckoutPage extends StatelessWidget {
             SizedBox(height: 10),
             Expanded(
               child: ListView(
-                children: addedItems.map((quantityItem) {
-                  return ListTile(
-                    title: Text(
-                        '${quantityItem.item.name} x${quantityItem.quantity}'),
-                    subtitle: Text(
-                        'Total: Peso ${(quantityItem.item.price * quantityItem.quantity).toStringAsFixed(2)}'),
-                  );
-                }).toList(),
+                children: [
+                  // Display items from each cart
+                  ...carts
+                      .map((cart) => ExpansionTile(
+                            title: Text('${cart.name}'),
+                            children: cart.items
+                                .map((item) => ListTile(
+                                      title: Text(
+                                          '${item.item.name} x${item.quantity}'),
+                                      subtitle: Text(
+                                          'Total: Peso ${(item.item.price * item.quantity).toStringAsFixed(2)}'),
+                                    ))
+                                .toList(),
+                          ))
+                      .toList(),
+                ],
               ),
             ),
             SizedBox(height: 16),
-            Text(
-              'Select Delivery Address',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            Text('Select Delivery Address',
+                style: TextStyle(fontWeight: FontWeight.bold)),
             DropdownButton<String>(
               hint: Text('Select an address'),
               value: selectedAddress,
@@ -72,18 +75,16 @@ class CheckoutPage extends StatelessWidget {
                 selectedAddress = newValue;
               },
               items: deliveryAddresses
-                  .map<DropdownMenuItem<String>>((String address) {
-                return DropdownMenuItem<String>(
-                  value: address,
-                  child: Text(address),
-                );
-              }).toList(),
+                  .map<DropdownMenuItem<String>>(
+                      (String address) => DropdownMenuItem<String>(
+                            value: address,
+                            child: Text(address),
+                          ))
+                  .toList(),
             ),
             SizedBox(height: 16),
-            Text(
-              'Select Payment Method',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            Text('Select Payment Method',
+                style: TextStyle(fontWeight: FontWeight.bold)),
             DropdownButton<String>(
               hint: Text('Select a payment method'),
               value: selectedPaymentMethod,
@@ -91,19 +92,17 @@ class CheckoutPage extends StatelessWidget {
                 onPaymentMethodSelected(newValue!);
                 selectedPaymentMethod = newValue;
               },
-              items:
-                  paymentMethods.map<DropdownMenuItem<String>>((String method) {
-                return DropdownMenuItem<String>(
-                  value: method,
-                  child: Text(method),
-                );
-              }).toList(),
+              items: paymentMethods
+                  .map<DropdownMenuItem<String>>(
+                      (String method) => DropdownMenuItem<String>(
+                            value: method,
+                            child: Text(method),
+                          ))
+                  .toList(),
             ),
             SizedBox(height: 16),
-            Text(
-              'Total: Peso ${totalAmount.toStringAsFixed(2)}',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
+            Text('Total: Peso ${totalAmount.toStringAsFixed(2)}',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             SizedBox(height: 16),
             Center(
               child: ElevatedButton(

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'categories.dart'; // Import the file with the grocery items and quantityItem class
+import 'package:EasyGrocery/provider/categories.dart';
 import 'searchItem.dart';
-import 'checkout.dart';
+import 'checkout_direct.dart';
 import 'smart_calendar.dart';
 import 'package:flutter/services.dart';
-import 'format _number.dart';
-import 'carts_screen.dart';
-import 'cart_provider.dart';
+import 'package:EasyGrocery/provider/format _number.dart';
+import 'carts_display.dart';
 import 'package:provider/provider.dart';
+import 'package:EasyGrocery/provider/cart_provider.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -16,6 +16,7 @@ class HomePage extends StatefulWidget {
 
 class _GroceryHomePageState extends State<HomePage> {
   final TextEditingController _budgetController = TextEditingController();
+
   double _totalAmount = 0.0;
   List<quantityItem> _addedItems =
       []; // List to hold added items and their quantities
@@ -286,14 +287,39 @@ class _GroceryHomePageState extends State<HomePage> {
     );
   }
 
-// Modified Function to add selected items to the cart
   void _addItemToCart(BuildContext context, Cart cart) {
-    // Assuming _addedItems holds the items you want to add to the cart
     for (var item in _addedItems) {
-      // Ensure _addedItems is accessible here
       Provider.of<CartProvider>(context, listen: false)
           .addItemToCart(cart.name, item);
     }
+    _clearAddedItems(); // Clear items after they are added to the cart
+    _resetBudgetAndItems(); // Reset budget and other related state
+  }
+
+  void _clearAddedItems() {
+    setState(() {
+      _addedItems.clear(); // This clears the list of added items
+    });
+  }
+
+  void _resetBudgetAndItems() {
+    setState(() {
+      _budgetController.clear(); // This clears the input field for the budget.
+      _addedItems
+          .clear(); // This clears all added items, assuming _addedItems is a list of items added to a cart.
+      // Assuming you have a variable _totalAmount that tracks the total amount spent or allocated.
+      _totalAmount =
+          0; // Reset the total amount to reflect that items are cleared.
+
+      // Directly recalculate the remaining budget
+      // Here, since the budget is cleared, the remaining budget should also reset to reflect no budget entry.
+      double budget =
+          double.tryParse(_budgetController.text.replaceAll(',', '')) ?? 0.0;
+
+      // ignore: unused_local_variable
+      double remainingBudget = budget -
+          _totalAmount; // Also 0 since both budget and total amount are reset.
+    });
   }
 
 // Add this method to add items to a selected cart
@@ -308,18 +334,21 @@ class _GroceryHomePageState extends State<HomePage> {
   void _addNewCart() {
     setState(() {
       int newCartNumber = _carts.length + 1;
-      _carts.add(Cart(name: 'Cart $newCartNumber', items: []));
+      _carts.add(Cart(name: 'Cart $newCartNumber', items: [], id: ''));
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // Parse the budget from the text field
     String budgetText = _budgetController.text.replaceAll(',', '');
     double budget = double.tryParse(budgetText) ?? 0.0;
     double remainingBudget = budget - _totalAmount;
+    double getRemainingBudget() {
+      double budget =
+          double.tryParse(_budgetController.text.replaceAll(',', '')) ?? 0.0;
+      return budget - _totalAmount;
+    }
 
-    // Calculate remaining budget
     return Scaffold(
       backgroundColor: Color(0xFFEEECE6),
       appBar: AppBar(
@@ -571,7 +600,7 @@ class _GroceryHomePageState extends State<HomePage> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Remaining Budget: ₱${currencyFormat.format(remainingBudget)}',
+                            'Remaining Budget: \₱${currencyFormat.format(remainingBudget)}',
                             style: TextStyle(
                               fontFamily: 'Poppins-Regular',
                               color: remainingBudget < 0
@@ -746,7 +775,9 @@ class _GroceryHomePageState extends State<HomePage> {
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 12.0),
                   decoration: BoxDecoration(
-                    color: Color(0xFFBD4254),
+                    color: _addedItems.isNotEmpty
+                        ? Color(0xFFBD4254) // Original color when items exist
+                        : Colors.grey, // Darkened grey when no items
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(10.0),
                       bottomLeft: Radius.circular(10.0),
@@ -754,14 +785,16 @@ class _GroceryHomePageState extends State<HomePage> {
                   ),
                   child: Row(
                     children: [
-                      // Add to Cart Button (updated logic to show cart window)
+                      // Add to Cart Button
                       IconButton(
-                        icon: Icon(Icons.add_shopping_cart,
-                            color: Colors.white), // Updated icon
-                        onPressed: () {
-                          // Show the modal bottom sheet with cart options
-                          _showCartSelection(context);
-                        },
+                        icon:
+                            Icon(Icons.add_shopping_cart, color: Colors.white),
+                        onPressed: _addedItems.isNotEmpty
+                            ? () {
+                                // Show the modal bottom sheet with cart options
+                                _showCartSelection(context);
+                              }
+                            : null, // Disable button if no items to add
                       ),
                       // Divider between Cart and Checkout buttons (optional)
                       Container(
@@ -771,38 +804,52 @@ class _GroceryHomePageState extends State<HomePage> {
                       ),
                       // Check Out Button
                       TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CheckoutPage(
-                                addedItems: _addedItems,
-                                totalAmount: _totalAmount,
-                                onAddressSelected: (String selectedAddress) {
-                                  // Handle address selection here
-                                  print('Selected address: $selectedAddress');
-                                },
-                                onPaymentMethodSelected:
-                                    (String selectedPaymentMethod) {
-                                  // Handle payment method selection here
-                                  print(
-                                      'Selected payment method: $selectedPaymentMethod');
-                                },
-                              ),
-                            ),
-                          );
-                        },
+                        onPressed: _addedItems.isNotEmpty
+                            ? () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => CheckoutPage(
+                                      addedItems: _addedItems,
+                                      totalAmount: _totalAmount,
+                                      onAddressSelected:
+                                          (String selectedAddress) {
+                                        // Handle address selection here
+                                        print(
+                                            'Selected address: $selectedAddress');
+                                      },
+                                      onPaymentMethodSelected:
+                                          (String selectedPaymentMethod) {
+                                        // Handle payment method selection here
+                                        print(
+                                            'Selected payment method: $selectedPaymentMethod');
+                                      },
+                                    ),
+                                  ),
+                                );
+                              }
+                            : null, // Disable button if no items to checkout
                         child: Text(
                           'Check Out',
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontWeight: FontWeight.w200,
                             color: Colors.white,
-                            fontSize: 20, // Increased font size
+                            fontSize: 20, // Keep font size same
                           ),
                         ),
                         style: TextButton.styleFrom(
-                          minimumSize: Size(120, 48), // Increased button size
+                          backgroundColor: _addedItems.isNotEmpty
+                              ? Color(
+                                  0xFFBD4254) // Original color when items exist
+                              : Colors.grey, // Grey when no items to checkout
+                          minimumSize: Size(120, 48), // Same button size
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 16.0, vertical: 8.0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius
+                                .zero, // Keep button shape consistent
+                          ),
                         ),
                       ),
                     ],
@@ -810,7 +857,7 @@ class _GroceryHomePageState extends State<HomePage> {
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );

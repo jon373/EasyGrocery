@@ -44,11 +44,14 @@ final List<String> categories = [
 ];
 
 class Cart {
+  String id; // Unique identifier
   String name;
   List<quantityItem> items;
+  bool isSelected;
 
-  Cart({
-    required this.name,
-    required this.items,
-  });
+  Cart(
+      {required this.id,
+      required this.name,
+      required this.items,
+      this.isSelected = false});
 }

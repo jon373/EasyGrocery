@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'categories.dart';
+import 'package:EasyGrocery/provider/categories.dart';
 
 class SmartCalendarPage extends StatefulWidget {
   final List<quantityItem> addedItems;
