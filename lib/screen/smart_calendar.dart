@@ -98,6 +98,7 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
                   children: [
                     // _buildCustomHeader(), // Custom header widget
                     Expanded(
+                      //package for calendar
                       child: SfCalendar(
                         key: ValueKey(_calendarView),
                         view: _calendarView,
@@ -358,6 +359,7 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
     }
   }
 
+//meal to update
   Widget _buildCustomAgenda() {
     if (_selectedDate == null) return SizedBox.shrink();
 

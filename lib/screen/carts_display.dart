@@ -19,6 +19,89 @@ class _CartsScreenState extends State<CartsScreen> {
     super.dispose();
   }
 
+// List to keep track of deleted carts
+  List<Cart> _deletedCarts = [];
+
+// Function to delete multiple carts and show a combined SnackBar
+  void _deleteMultipleCarts(BuildContext context, List<Cart> cartsToDelete) {
+    // Store all deleted carts in a temporary variable
+    _deletedCarts =
+        List.from(cartsToDelete); // Update the global _deletedCarts list
+
+    List<String> cartIds = _deletedCarts.map((cart) => cart.id).toList();
+
+    // Remove all the carts by their IDs
+    Provider.of<CartProvider>(context, listen: false)
+        .removeMultipleCarts(cartIds);
+
+    // Show a combined SnackBar for multiple carts
+    ScaffoldMessenger.of(context)
+        .hideCurrentSnackBar(); // Hide any existing SnackBars
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Multiple carts deleted"),
+        duration: Duration(seconds: 3), // Show for 3 seconds
+        action: SnackBarAction(
+          label: "Undo",
+          onPressed: () {
+            // Restore all the deleted carts
+            Provider.of<CartProvider>(context, listen: false)
+                .restoreMultipleCarts(_deletedCarts);
+
+            // Clear the _deletedCarts list after restoring
+            _deletedCarts.clear();
+
+            // Re-update the total value after restoration
+            _updateTotalValue();
+          },
+        ),
+      ),
+    );
+  }
+
+  void _deleteCart(Cart cart) {
+    // Store the deleted cart in a temporary variable
+    _deletedCarts.add(cart);
+
+    // Remove the cart by ID
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
+    cartProvider.removeCartById(cart.id);
+
+    // Show a combined SnackBar for single or multiple deletions
+    ScaffoldMessenger.of(context)
+        .hideCurrentSnackBar(); // Hide any existing SnackBars
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _deletedCarts.length > 1
+              ? "Multiple carts deleted" // Message for multiple deletions
+              : "${cart.name} deleted", // Message for single deletion
+        ),
+        duration: Duration(seconds: 3), // Show for 3 seconds
+        action: SnackBarAction(
+          label: "Undo",
+          onPressed: () {
+            try {
+              // Restore all the deleted carts
+              cartProvider.restoreMultipleCarts(_deletedCarts);
+
+              // Clear the _deletedCarts list after restoring to avoid duplications
+              _deletedCarts.clear();
+
+              // Re-update the total value after restoration
+              _updateTotalValue();
+            } catch (e) {
+              // If there was an error during restoration, handle it gracefully
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error: Unable to restore carts')),
+              );
+            }
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     List<Cart> carts = Provider.of<CartProvider>(context).carts;
@@ -59,6 +142,7 @@ class _CartsScreenState extends State<CartsScreen> {
                 totalItems += item.quantity; // Accumulate total items count
               });
 
+              // Dismissible widget with the modified onDismissed method
               return Dismissible(
                 key: Key(cart.id), // Use cart ID as the key for stability
                 direction: DismissDirection.endToStart, // Swipe right to left
@@ -72,18 +156,9 @@ class _CartsScreenState extends State<CartsScreen> {
                   ),
                 ),
                 onDismissed: (direction) {
-                  // Remove the cart by ID
-                  Provider.of<CartProvider>(context, listen: false)
-                      .removeCartById(cart.id);
-
-                  // Update total value
-                  _updateTotalValue();
-
-                  // Show a Snackbar with a message
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("${cart.name} deleted")),
-                  );
+                  _deleteCart(cart);
                 },
+
                 child: Card(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10.0),

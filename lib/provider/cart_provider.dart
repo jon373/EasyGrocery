@@ -42,6 +42,39 @@ class CartProvider with ChangeNotifier {
     notifyListeners(); // Notify listeners to update the UI
   }
 
+// Restore a list of deleted carts
+  void restoreDeletedCarts(List<Cart> deletedCarts) {
+    // Re-add the deleted carts to the list
+    _carts.addAll(deletedCarts);
+
+    // Rename the remaining carts sequentially
+    for (int i = 0; i < _carts.length; i++) {
+      _carts[i].name = 'Cart ${i + 1}';
+    }
+
+    notifyListeners(); // Notify listeners to rebuild the UI
+  }
+
+// Remove multiple carts by their IDs
+  void removeMultipleCarts(List<String> cartIds) {
+    _carts.removeWhere((cart) => cartIds.contains(cart.id));
+    // Rename the remaining carts sequentially
+    for (int i = 0; i < _carts.length; i++) {
+      _carts[i].name = 'Cart ${i + 1}';
+    }
+    notifyListeners(); // Notify listeners to update the UI
+  }
+
+// Restore multiple deleted carts
+  void restoreMultipleCarts(List<Cart> deletedCarts) {
+    _carts.addAll(deletedCarts);
+    // Rename the remaining carts sequentially
+    for (int i = 0; i < _carts.length; i++) {
+      _carts[i].name = 'Cart ${i + 1}';
+    }
+    notifyListeners(); // Notify listeners to rebuild the UI
+  }
+
   // Add item to cart
   void addItemToCart(String cartName, quantityItem item) {
     Cart cart;

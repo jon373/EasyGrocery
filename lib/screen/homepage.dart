@@ -8,6 +8,8 @@ import 'package:EasyGrocery/provider/format _number.dart';
 import 'carts_display.dart';
 import 'package:provider/provider.dart';
 import 'package:EasyGrocery/provider/cart_provider.dart';
+import 'package:EasyGrocery/provider/recommend.dart';
+import 'dart:math'; // Import the dart:math
 
 class HomePage extends StatefulWidget {
   @override
@@ -18,6 +20,7 @@ class _GroceryHomePageState extends State<HomePage> {
   final TextEditingController _budgetController = TextEditingController();
 
   double _totalAmount = 0.0;
+  double remainingBudget = 0.0; // Remaining budget variable
   List<quantityItem> _addedItems =
       []; // List to hold added items and their quantities
 
@@ -32,12 +35,14 @@ class _GroceryHomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _selectedStore = null; // Set a default store if available
+    remainingBudget = 0.0; // Initialize remaining budget
   }
 
   void _increaseQuantity(quantityItem quantityItem) {
     setState(() {
       quantityItem.quantity++;
       _totalAmount += quantityItem.item.price; // Update total amount
+      _updateRemainingBudget(); // Update the remaining budget
     });
   }
 
@@ -46,6 +51,7 @@ class _GroceryHomePageState extends State<HomePage> {
       setState(() {
         quantityItem.quantity--;
         _totalAmount -= quantityItem.item.price; // Update total amount
+        _updateRemainingBudget(); // Update the remaining budget
       });
     } else {
       // Show confirmation dialog to remove the item
@@ -53,6 +59,43 @@ class _GroceryHomePageState extends State<HomePage> {
     }
   }
 
+// Function to remove item with swipe-to-delete functionality
+  void _removeItemWithUndo(quantityItem item, int index) {
+    setState(() {
+      _totalAmount -= item.item.price * item.quantity; // Update total amount
+      _addedItems.removeAt(index); // Remove the item from the cart
+      _updateRemainingBudget(); // Update the remaining budget
+    });
+
+    // Show a SnackBar with an Undo button
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${item.item.name} removed from the cart.'),
+        action: SnackBarAction(
+          label: 'UNDO',
+          onPressed: () {
+            // Restore the removed item when undo is pressed
+            setState(() {
+              _addedItems.insert(index, item);
+              _totalAmount +=
+                  item.item.price * item.quantity; // Restore total amount
+              _updateRemainingBudget(); // Update the remaining budget
+            });
+          },
+        ),
+        duration: Duration(seconds: 3), // Show the SnackBar for 3 seconds
+      ),
+    );
+  }
+
+// Update remaining budget based on the total amount and budget
+  void _updateRemainingBudget() {
+    String budgetText = _budgetController.text.replaceAll(',', '');
+    double budget = double.tryParse(budgetText) ?? 0.0;
+    remainingBudget = budget - _totalAmount;
+  }
+
+// Show confirmation dialog before removing an item completely
   void _showRemoveConfirmationDialog(quantityItem quantityItem) {
     showDialog(
       context: context,
@@ -69,6 +112,7 @@ class _GroceryHomePageState extends State<HomePage> {
                       quantityItem.quantity; // Update total amount
                   _addedItems
                       .remove(quantityItem); // Remove the item from the cart
+                  _updateRemainingBudget(); // Update remaining budget
                 });
                 Navigator.of(context).pop(); // Close the dialog
               },
@@ -195,10 +239,145 @@ class _GroceryHomePageState extends State<HomePage> {
     });
   }
 
+  void _showCategorySelectionDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Select category'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // List of meal types (Breakfast, Lunch, Dinner) as options
+              ListTile(
+                title: Text('Breakfast'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showRecommendedItems('Breakfast');
+                },
+              ),
+              ListTile(
+                title: Text('Lunch'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showRecommendedItems('Lunch');
+                },
+              ),
+              ListTile(
+                title: Text('Dinner'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showRecommendedItems('Dinner');
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+// Modify the _showRecommendedItems function
+  void _showRecommendedItems(String mealType) {
+    double budget =
+        double.tryParse(_budgetController.text.replaceAll(',', '')) ?? 0.0;
+    List<GroceryItem> initialRecommendedItems = [];
+
+    // Filter the grocery items based on the selected mealType
+    for (GroceryItem item in groceryItems) {
+      if (item.mealType.contains(mealType)) {
+        initialRecommendedItems.add(item);
+      }
+    }
+
+    initialRecommendedItems.sort((a, b) => a.price.compareTo(b.price));
+    List<quantityItem> finalRecommendedItems = [];
+    double totalCost = 0.0;
+    Random random = Random();
+
+    while (totalCost < budget && initialRecommendedItems.isNotEmpty) {
+      GroceryItem randomItem = initialRecommendedItems[
+          random.nextInt(initialRecommendedItems.length)];
+      double newTotalCost = totalCost + randomItem.price;
+
+      if (newTotalCost <= budget) {
+        // Use a placeholder item to avoid null issues
+        quantityItem placeholder = quantityItem(item: randomItem, quantity: 0);
+
+        // Find if the item already exists in the list
+        quantityItem existingItem = finalRecommendedItems.firstWhere(
+          (qItem) => qItem.item.name == randomItem.name,
+          orElse: () => placeholder,
+        );
+
+        if (existingItem.quantity > 0) {
+          // If the item already exists, increase its quantity
+          existingItem.quantity++;
+        } else {
+          // If the item does not exist, add it with quantity 1
+          finalRecommendedItems
+              .add(quantityItem(item: randomItem, quantity: 1));
+        }
+
+        totalCost = newTotalCost;
+      } else {
+        break;
+      }
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RecommendedItemsScreen(
+          mealType: mealType,
+          budget: budget,
+          recommendedItems: finalRecommendedItems,
+          onAddToHomeScreen: _addRecommendedItems,
+        ),
+      ),
+    );
+  }
+
+// Modify the _addRecommendedItems function similarly
+  void _addRecommendedItems(List<quantityItem> recommendedItems) {
+    setState(() {
+      for (var recommendedItem in recommendedItems) {
+        // Use a placeholder to avoid null issues
+        quantityItem placeholder =
+            quantityItem(item: recommendedItem.item, quantity: 0);
+
+        // Find if the item already exists in the _addedItems list
+        quantityItem existingItem = _addedItems.firstWhere(
+          (item) => item.item.name == recommendedItem.item.name,
+          orElse: () => placeholder,
+        );
+
+        if (existingItem.quantity > 0) {
+          // If the item already exists, increase its quantity
+          existingItem.quantity += recommendedItem.quantity;
+        } else {
+          // If the item does not exist, add it to the list
+          _addedItems.add(recommendedItem);
+        }
+
+        // Update the total amount
+        _totalAmount += recommendedItem.item.price * recommendedItem.quantity;
+      }
+
+      // Recalculate the remaining budget
+      String budgetText = _budgetController.text.replaceAll(',', '');
+      double budget = double.tryParse(budgetText) ?? 0.0;
+      remainingBudget = budget - _totalAmount;
+    });
+  }
+
   List<Cart> _carts = [];
 
 // Show cart selection dialog
   void _showCartSelection(BuildContext context) {
+    // Create a ScrollController to control the ListView
+    ScrollController _scrollController = ScrollController();
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -206,13 +385,24 @@ class _GroceryHomePageState extends State<HomePage> {
           builder: (BuildContext context, StateSetter setState) {
             return AlertDialog(
               title: Text('Select a Cart'),
-              content: Consumer<CartProvider>(
-                builder: (context, cartProvider, child) {
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ...cartProvider.carts
-                          .map((cart) => ListTile(
+              content: Container(
+                width: double.maxFinite, // Set width to fit the screen width
+                height: 300.0, // Set a fixed height for the dialog content
+                child: Consumer<CartProvider>(
+                  builder: (context, cartProvider, child) {
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Make the list of carts scrollable
+                        Expanded(
+                          child: ListView.builder(
+                            controller:
+                                _scrollController, // Attach the scroll controller
+                            shrinkWrap: true,
+                            itemCount: cartProvider.carts.length,
+                            itemBuilder: (context, index) {
+                              var cart = cartProvider.carts[index];
+                              return ListTile(
                                 title: Text(cart.name),
                                 onTap: () {
                                   Navigator.pop(
@@ -222,21 +412,61 @@ class _GroceryHomePageState extends State<HomePage> {
                                   _showSuccessNotification(
                                       context); // Notify that items were saved
                                 },
-                              ))
-                          .toList(),
-                      ElevatedButton(
-                        onPressed: () {
-                          // Add a new cart
-                          cartProvider
-                              .addCart('Cart ${cartProvider.carts.length + 1}');
-                          setState(
-                              () {}); // This will force the dialog to rebuild
-                        },
-                        child: Text('Add New Cart'),
-                      ),
-                    ],
-                  );
-                },
+                              );
+                            },
+                          ),
+                        ),
+                        SizedBox(
+                            height:
+                                16), // Add spacing between the list and button
+
+                        // Add New Cart button with limitation check
+                        ElevatedButton(
+                          onPressed: cartProvider.carts.length < 10
+                              ? () {
+                                  // Add a new cart only if there are less than 10 carts
+                                  cartProvider.addCart(
+                                      'Cart ${cartProvider.carts.length + 1}');
+
+                                  // Use setState to trigger a UI rebuild
+                                  setState(() {});
+
+                                  // Scroll to the bottom of the ListView after adding a new cart
+                                  Future.delayed(Duration(milliseconds: 300),
+                                      () {
+                                    if (_scrollController.hasClients) {
+                                      _scrollController.animateTo(
+                                        _scrollController
+                                            .position.maxScrollExtent,
+                                        duration: Duration(milliseconds: 300),
+                                        curve: Curves.easeOut,
+                                      );
+                                    }
+                                  });
+                                }
+                              : null, // Disable the button when 10 carts are reached
+                          child: Text(
+                            'Add New Cart',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: cartProvider.carts.length < 10
+                                ? Color(
+                                    0xFFBD4254) // Original color when active
+                                : Colors.grey, // Turn grey when disabled
+                            textStyle: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
             );
           },
@@ -342,12 +572,17 @@ class _GroceryHomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     String budgetText = _budgetController.text.replaceAll(',', '');
     double budget = double.tryParse(budgetText) ?? 0.0;
+
     double remainingBudget = budget - _totalAmount;
     double getRemainingBudget() {
       double budget =
           double.tryParse(_budgetController.text.replaceAll(',', '')) ?? 0.0;
+
       return budget - _totalAmount;
     }
+
+    bool isBudgetEntered =
+        (budget > 0); // Check if the budget is greater than 0
 
     return Scaffold(
       backgroundColor: Color(0xFFEEECE6),
@@ -491,8 +726,7 @@ class _GroceryHomePageState extends State<HomePage> {
                                 ),
                                 decoration: InputDecoration(
                                   contentPadding: const EdgeInsets.only(
-                                    left:
-                                        57.0, // Adjust this value to align with "Budget: "
+                                    left: 57.0, // Align with "Budget: "
                                     top: 10.0,
                                     bottom: 10.0,
                                   ),
@@ -505,21 +739,27 @@ class _GroceryHomePageState extends State<HomePage> {
                                     ),
                                     onPressed: () {
                                       setState(() {
+                                        // Focus and update state
                                         FocusScope.of(context).unfocus();
                                       });
+                                      // Show category selection window when budget is entered
+                                      if (isBudgetEntered) {
+                                        _showCategorySelectionDialog(context);
+                                      }
                                     },
                                   ),
                                 ),
                                 keyboardType: TextInputType.number,
                                 onChanged: (value) {
-                                  setState(() {});
+                                  setState(
+                                      () {}); // Rebuild the widget when budget changes
                                 },
                                 inputFormatters: [
                                   FilteringTextInputFormatter
                                       .digitsOnly, // Allow only numeric input
                                   ThousandsSeparatorInputFormatter(), // Add thousands separators
                                   LengthLimitingTextInputFormatter(
-                                      6), // Limit to 10 characters
+                                      6), // Limit to 6 characters
                                 ],
                               ),
                             ],
@@ -596,16 +836,20 @@ class _GroceryHomePageState extends State<HomePage> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Display the Remaining Budget text and update only when a valid budget is entered
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Remaining Budget: \₱${currencyFormat.format(remainingBudget)}',
+                            'Remaining Budget: \₱${isBudgetEntered ? currencyFormat.format(remainingBudget) : '0.00'}',
                             style: TextStyle(
                               fontFamily: 'Poppins-Regular',
-                              color: remainingBudget < 0
-                                  ? Colors.red
-                                  : Colors.black,
+                              // If budget is not entered, keep the text color black. Otherwise, change color based on remaining budget
+                              color: !isBudgetEntered
+                                  ? Colors.black
+                                  : (remainingBudget < 0
+                                      ? Colors.red
+                                      : Colors.black),
                               fontWeight: FontWeight.w400,
                             ),
                           ),
@@ -635,95 +879,93 @@ class _GroceryHomePageState extends State<HomePage> {
                           ),
                         ],
                       ),
-                      if (remainingBudget < 0)
-                        Text(
-                          'You have exceeded your budget!',
-                          style: TextStyle(
-                              color: Colors.red,
-                              fontFamily: 'Poppins-Regular',
-                              fontWeight: FontWeight.w400),
-                        ),
                     ],
-                  ),
+                  )
                 ],
               ),
             ),
           ),
           Expanded(
-            child: ListView(
-              children: [
-                ..._addedItems.map((quantityItem) {
-                  return Container(
-                    margin: const EdgeInsets.symmetric(
-                        vertical: 4.0), // Space between items
-                    padding:
-                        const EdgeInsets.all(8.0), // Padding inside the border
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(
-                          color: Colors.grey,
-                          width: 2.0), // Border width for the item container
-                      borderRadius: BorderRadius.circular(
-                          8.0), // Optional: Rounded corners
+            child: ListView.builder(
+              itemCount: _addedItems.length,
+              itemBuilder: (context, index) {
+                final quantityItem item = _addedItems[index];
+
+                return Dismissible(
+                  key: Key(item.item.name), // Unique key for each item
+                  direction: DismissDirection.endToStart, // Swipe right-to-left
+                  background: Container(
+                    color: Colors.red, // Background color for the delete action
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    alignment: Alignment.centerRight, // Align to the right side
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          'Delete',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Icon(
+                          Icons.delete, // Trash icon
+                          color: Colors.white,
+                        ),
+                      ],
                     ),
+                  ),
+                  onDismissed: (direction) {
+                    // Remove the item and show the undo SnackBar
+                    _removeItemWithUndo(item, index);
+                  },
+                  child: Card(
+                    elevation: 4,
+                    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                     child: ListTile(
-                      onTap: () => _showRelevantItems(
-                          quantityItem), // Show relevant items when tapped
+                      onTap: () => _showRelevantItems(item),
                       title: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            quantityItem.item.name,
+                            item.item.name,
                             style: TextStyle(
-                              fontFamily:
-                                  'Poppins', // Replace with your custom font family
-                              fontSize: 18, // Adjust the font size as needed
-                              fontWeight: FontWeight
-                                  .w600, // Adjust the font weight as needed
-                              color: Colors
-                                  .black, // Adjust the text color as needed
+                              fontFamily: 'Poppins',
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
                             ),
                           ),
-                          // Box border and background color for quantity controls
                           Container(
                             decoration: BoxDecoration(
-                              color: Color(
-                                  0xFFB9ACA6), // Set the background color here
-                              border: Border.all(
-                                  color: Colors.grey,
-                                  width:
-                                      1.0), // Single border around the quantity controls
-                              borderRadius: BorderRadius.circular(
-                                  5.0), // Rounded corners for the border
+                              color: Color(0xFFB9ACA6),
+                              border:
+                                  Border.all(color: Colors.grey, width: 1.0),
+                              borderRadius: BorderRadius.circular(5.0),
                             ),
                             child: Row(
                               children: [
                                 IconButton(
                                   icon: Icon(Icons.remove),
-                                  onPressed: () =>
-                                      _decreaseQuantity(quantityItem),
+                                  onPressed: () => _decreaseQuantity(item),
                                 ),
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal:
-                                          8.0), // Padding inside the quantity text container
+                                      horizontal: 8.0),
                                   child: Text(
-                                    '${quantityItem.quantity}',
+                                    '${item.quantity}',
                                     style: TextStyle(
-                                      fontFamily:
-                                          'Poppins', // Replace with your custom font family
+                                      fontFamily: 'Poppins',
                                       fontWeight: FontWeight.bold,
-                                      fontSize:
-                                          18, // Adjust the font size as needed
-                                      color: Colors
-                                          .black, // Adjust the text color as needed
+                                      fontSize: 18,
+                                      color: Colors.black,
                                     ),
                                   ),
                                 ),
                                 IconButton(
                                   icon: Icon(Icons.add),
-                                  onPressed: () =>
-                                      _increaseQuantity(quantityItem),
+                                  onPressed: () => _increaseQuantity(item),
                                 ),
                               ],
                             ),
@@ -731,19 +973,18 @@ class _GroceryHomePageState extends State<HomePage> {
                         ],
                       ),
                       subtitle: Text(
-                        'Total: ₱${(quantityItem.item.price * quantityItem.quantity).toStringAsFixed(2)}',
+                        'Total: ₱${(item.item.price * item.quantity).toStringAsFixed(2)}',
                         style: TextStyle(
-                          fontFamily:
-                              'Poppins-Regular', // Replace with your custom font family
+                          fontFamily: 'Poppins-Regular',
                           fontWeight: FontWeight.w400,
-                          fontSize: 16, // Adjust the font size as needed
-                          color: Colors.grey, // Adjust the text color as needed
+                          fontSize: 16,
+                          color: Colors.grey,
                         ),
                       ),
                     ),
-                  );
-                }),
-              ],
+                  ),
+                );
+              },
             ),
           ),
 
