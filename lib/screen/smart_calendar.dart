@@ -132,6 +132,7 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
                           ),
                         ),
                         dataSource: MeetingDataSource(_getDataSource()),
+                        // allowDragAndDrop: true,
                         onTap: (details) {
                           if (details.targetElement ==
                               CalendarElement.calendarCell) {
@@ -256,7 +257,7 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
   }
 
   List<Meeting> _getDataSource() {
-    final List<Meeting> meetings = <Meeting>[];
+    final List<Meeting> meetings = [];
     final DateTime today = DateTime.now();
 
     for (var cartItem in widget.addedItems) {
@@ -266,7 +267,8 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
       while (totalQuantity > 0) {
         DateTime date = today.add(Duration(days: day));
 
-        if (totalQuantity > 0) {
+        // If the item is categorized for Breakfast
+        if (cartItem.item.mealType.contains('Breakfast') && totalQuantity > 0) {
           meetings.add(
             Meeting(
               '${cartItem.item.name} (1x)',
@@ -279,7 +281,8 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
           totalQuantity--;
         }
 
-        if (totalQuantity > 0) {
+        // If the item is categorized for Lunch
+        if (cartItem.item.mealType.contains('Lunch') && totalQuantity > 0) {
           meetings.add(
             Meeting(
               '${cartItem.item.name} (1x)',
@@ -292,7 +295,8 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
           totalQuantity--;
         }
 
-        if (totalQuantity > 0) {
+        // If the item is categorized for Dinner
+        if (cartItem.item.mealType.contains('Dinner') && totalQuantity > 0) {
           meetings.add(
             Meeting(
               '${cartItem.item.name} (1x)',
@@ -483,7 +487,7 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
     final selectedMeetings = meetings.where((meeting) {
       DateTime meetingDate =
           DateTime(meeting.from.year, meeting.from.month, meeting.from.day);
-      if (meetingDate != _selectedDate) return false;
+      if (!meetingDate.isSameDate(_selectedDate!)) return false;
 
       switch (mealTime) {
         case 'Breakfast':
