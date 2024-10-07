@@ -6,7 +6,7 @@ import '../provider/cart_provider.dart'; // Import the CartProvider to manage th
 class CartDetailsScreen extends StatefulWidget {
   final Cart cart;
 
-  CartDetailsScreen({required this.cart});
+  const CartDetailsScreen({super.key, required this.cart});
 
   @override
   _CartDetailsScreenState createState() => _CartDetailsScreenState();
@@ -37,9 +37,9 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
             direction: DismissDirection.endToStart, // Swipe left to right
             background: Container(
               alignment: Alignment.centerRight,
-              padding: EdgeInsets.symmetric(horizontal: 20.0),
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
               color: Colors.red, // Background color for dismiss action
-              child: Icon(Icons.delete, color: Colors.white),
+              child: const Icon(Icons.delete, color: Colors.white),
             ),
             onDismissed: (direction) {
               // Remove the item from the cart
@@ -54,7 +54,7 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
               );
             },
             child: Card(
-              margin: EdgeInsets.all(8.0),
+              margin: const EdgeInsets.all(8.0),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10.0),
               ),
@@ -69,16 +69,17 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                       children: [
                         Text(
                           item.item.name,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         // Display the total price based on quantity
                         Text(
                           'Price: ₱${(item.item.price * item.quantity).toStringAsFixed(2)}',
-                          style: TextStyle(fontSize: 16, color: Colors.black87),
+                          style: const TextStyle(
+                              fontSize: 16, color: Colors.black87),
                         ),
                       ],
                     ),
@@ -86,7 +87,7 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                     Row(
                       children: [
                         IconButton(
-                          icon: Icon(Icons.remove),
+                          icon: const Icon(Icons.remove),
                           onPressed: () {
                             setState(() {
                               if (item.quantity > 1) {
@@ -100,9 +101,9 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
                           },
                         ),
                         Text('${item.quantity}',
-                            style: TextStyle(fontSize: 18)),
+                            style: const TextStyle(fontSize: 18)),
                         IconButton(
-                          icon: Icon(Icons.add),
+                          icon: const Icon(Icons.add),
                           onPressed: () {
                             setState(() {
                               // Increase quantity and update the cart
@@ -127,7 +128,7 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
+            const Text(
               'Total:',
               style: TextStyle(
                 fontSize: 18,
@@ -136,7 +137,7 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
             ),
             Text(
               '₱${cartProvider.getCartTotal(widget.cart.name).toStringAsFixed(2)}', // Display total price formatted
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
@@ -153,8 +154,8 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Remove Item"),
-        content: Text("Are you sure you want to remove this item?"),
+        title: const Text("Remove Item"),
+        content: const Text("Are you sure you want to remove this item?"),
         actions: [
           TextButton(
             onPressed: () {
@@ -165,13 +166,13 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
               });
               Navigator.of(context).pop();
             },
-            child: Text("Remove"),
+            child: const Text("Remove"),
           ),
           TextButton(
             onPressed: () {
               Navigator.of(context).pop(); // Dismiss dialog
             },
-            child: Text("Cancel"),
+            child: const Text("Cancel"),
           ),
         ],
       ),

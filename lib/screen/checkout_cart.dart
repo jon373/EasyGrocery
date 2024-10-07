@@ -7,7 +7,8 @@ class CheckoutPage1 extends StatelessWidget {
   final Function(String) onAddressSelected;
   final Function(String) onPaymentMethodSelected;
 
-  CheckoutPage1({
+  const CheckoutPage1({
+    super.key,
     required this.totalAmount,
     required this.onAddressSelected,
     required this.onPaymentMethodSelected,
@@ -32,43 +33,41 @@ class CheckoutPage1 extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Checkout'),
+        title: const Text('Checkout'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               'Your Items',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Expanded(
               child: ListView(
                 children: [
                   // Display items from each cart
-                  ...carts
-                      .map((cart) => ExpansionTile(
-                            title: Text('${cart.name}'),
-                            children: cart.items
-                                .map((item) => ListTile(
-                                      title: Text(
-                                          '${item.item.name} x${item.quantity}'),
-                                      subtitle: Text(
-                                          'Total: Peso ${(item.item.price * item.quantity).toStringAsFixed(2)}'),
-                                    ))
-                                .toList(),
-                          ))
-                      .toList(),
+                  ...carts.map((cart) => ExpansionTile(
+                        title: Text(cart.name),
+                        children: cart.items
+                            .map((item) => ListTile(
+                                  title: Text(
+                                      '${item.item.name} x${item.quantity}'),
+                                  subtitle: Text(
+                                      'Total: Peso ${(item.item.price * item.quantity).toStringAsFixed(2)}'),
+                                ))
+                            .toList(),
+                      )),
                 ],
               ),
             ),
-            SizedBox(height: 16),
-            Text('Select Delivery Address',
+            const SizedBox(height: 16),
+            const Text('Select Delivery Address',
                 style: TextStyle(fontWeight: FontWeight.bold)),
             DropdownButton<String>(
-              hint: Text('Select an address'),
+              hint: const Text('Select an address'),
               value: selectedAddress,
               onChanged: (String? newValue) {
                 onAddressSelected(newValue!);
@@ -82,11 +81,11 @@ class CheckoutPage1 extends StatelessWidget {
                           ))
                   .toList(),
             ),
-            SizedBox(height: 16),
-            Text('Select Payment Method',
+            const SizedBox(height: 16),
+            const Text('Select Payment Method',
                 style: TextStyle(fontWeight: FontWeight.bold)),
             DropdownButton<String>(
-              hint: Text('Select a payment method'),
+              hint: const Text('Select a payment method'),
               value: selectedPaymentMethod,
               onChanged: (String? newValue) {
                 onPaymentMethodSelected(newValue!);
@@ -100,16 +99,17 @@ class CheckoutPage1 extends StatelessWidget {
                           ))
                   .toList(),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text('Total: Peso ${totalAmount.toStringAsFixed(2)}',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            SizedBox(height: 16),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 16),
             Center(
               child: ElevatedButton(
                 onPressed: () {
                   // Handle order confirmation here
                 },
-                child: Text('Confirm Order'),
+                child: const Text('Confirm Order'),
               ),
             ),
           ],

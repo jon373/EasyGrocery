@@ -7,7 +7,7 @@ import 'package:EasyGrocery/provider/categories.dart';
 class SmartCalendarPage extends StatefulWidget {
   final List<quantityItem> addedItems;
 
-  SmartCalendarPage({required this.addedItems});
+  const SmartCalendarPage({super.key, required this.addedItems});
 
   @override
   _SmartCalendarPageState createState() => _SmartCalendarPageState();
@@ -16,6 +16,7 @@ class SmartCalendarPage extends StatefulWidget {
 class _SmartCalendarPageState extends State<SmartCalendarPage> {
   CalendarView _calendarView = CalendarView.month;
   DateTime? _selectedDate;
+  late MeetingDataSource _meetingDataSource;
 
   final Color _defaultAppBarColor =
       const Color(0xFFEEECE6); // Default AppBar color
@@ -30,6 +31,12 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
     setState(() {
       _selectedDate = date;
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _meetingDataSource = MeetingDataSource(_getDataSource());
   }
 
   @override
@@ -77,41 +84,38 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
                 ],
               ),
             ),
-            // Container for rounded square background
             Expanded(
+              //design ng calendar
               child: Container(
-                padding:
-                    const EdgeInsets.all(16.0), // Padding around the calendar
+                padding: const EdgeInsets.all(16.0),
                 decoration: BoxDecoration(
-                  color: Colors.white, // White background for the calendar
-                  borderRadius: BorderRadius.circular(20.0), // Rounded corners
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20.0),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.grey.withOpacity(0.2),
                       spreadRadius: 2,
                       blurRadius: 5,
-                      offset: Offset(0, 3),
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
                 child: Column(
                   children: [
-                    // _buildCustomHeader(), // Custom header widget
                     Expanded(
-                      //package for calendar
+                      //SFCalendar settings
                       child: SfCalendar(
                         key: ValueKey(_calendarView),
                         view: _calendarView,
                         backgroundColor: Colors.transparent,
-                        headerHeight: 60, // Set to 0 to hide the default header
+                        headerHeight: 60,
                         monthViewSettings: const MonthViewSettings(
                           showAgenda: false,
                           appointmentDisplayMode:
                               MonthAppointmentDisplayMode.indicator,
                           navigationDirection:
                               MonthNavigationDirection.horizontal,
-                          dayFormat:
-                              'EEE', // Use three-letter day abbreviations
+                          dayFormat: 'EEE',
                           monthCellStyle: MonthCellStyle(
                             backgroundColor: Colors.transparent,
                             textStyle: TextStyle(
@@ -131,8 +135,49 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
                             ),
                           ),
                         ),
-                        dataSource: MeetingDataSource(_getDataSource()),
-                        // allowDragAndDrop: true,
+                        dataSource: _meetingDataSource,
+                        allowDragAndDrop: true,
+                        onDragStart:
+                            (AppointmentDragStartDetails dragStartDetails) {
+                          final Appointment draggedAppointment =
+                              dragStartDetails.appointment as Appointment;
+                          print('Drag Started: ${draggedAppointment.subject}');
+                        },
+                        onDragUpdate:
+                            (AppointmentDragUpdateDetails dragUpdateDetails) {
+                          final Appointment draggedAppointment =
+                              dragUpdateDetails.appointment as Appointment;
+                          print('Dragging: ${draggedAppointment.subject}');
+                        },
+                        onDragEnd: (AppointmentDragEndDetails dragEndDetails) {
+                          if (dragEndDetails.appointment != null &&
+                              dragEndDetails.droppingTime != null) {
+                            final Appointment draggedAppointment =
+                                dragEndDetails.appointment as Appointment;
+                            final DateTime newStartTime =
+                                dragEndDetails.droppingTime!;
+                            final DateTime newEndTime =
+                                newStartTime.add(const Duration(hours: 2));
+
+                            final Meeting? draggedMeeting =
+                                _meetingDataSource.appointments!.firstWhere(
+                              (element) =>
+                                  element.eventName ==
+                                  draggedAppointment.subject,
+                              orElse: () => null,
+                            ) as Meeting?;
+
+                            if (draggedMeeting != null) {
+                              final int index = _meetingDataSource.appointments!
+                                  .indexOf(draggedMeeting);
+
+                              _meetingDataSource.updateMeetingTime(
+                                  index, newStartTime, newEndTime);
+                              print(
+                                  'Drag Ended: ${draggedMeeting.eventName} moved to $newStartTime');
+                            }
+                          }
+                        },
                         onTap: (details) {
                           if (details.targetElement ==
                               CalendarElement.calendarCell) {
@@ -216,7 +261,7 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
     return Container(
       height: 60,
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.transparent,
       ),
       child: Center(
@@ -267,7 +312,7 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
       while (totalQuantity > 0) {
         DateTime date = today.add(Duration(days: day));
 
-        // If the item is categorized for Breakfast
+        // Pang categoized kung yung items is for breakfast
         if (cartItem.item.mealType.contains('Breakfast') && totalQuantity > 0) {
           meetings.add(
             Meeting(
@@ -281,7 +326,7 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
           totalQuantity--;
         }
 
-        // If the item is categorized for Lunch
+        // If pang lunch
         if (cartItem.item.mealType.contains('Lunch') && totalQuantity > 0) {
           meetings.add(
             Meeting(
@@ -295,7 +340,7 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
           totalQuantity--;
         }
 
-        // If the item is categorized for Dinner
+        // If pang dinner
         if (cartItem.item.mealType.contains('Dinner') && totalQuantity > 0) {
           meetings.add(
             Meeting(
@@ -317,13 +362,13 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
   }
 
   Widget _buildAgendaOrMessages() {
-    final double agendaHeight = 300; // Fixed height for the agenda container
+    const double agendaHeight = 300;
 
     if (_selectedDate == null) {
       return Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFEEECE6), // Background color
-          borderRadius: BorderRadius.circular(20.0), // Rounded corners
+          color: const Color(0xFFEEECE6),
+          borderRadius: BorderRadius.circular(20.0),
         ),
         height: agendaHeight,
         padding: const EdgeInsets.all(16.0),
@@ -344,12 +389,12 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
     });
 
     if (hasMeetings) {
-      return _buildCustomAgenda(); // Build custom agenda with rounded corners
+      return _buildCustomAgenda();
     } else {
       return Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFEEECE6), // Background color
-          borderRadius: BorderRadius.circular(20.0), // Rounded corners
+          color: const Color(0xFFEEECE6),
+          borderRadius: BorderRadius.circular(20.0),
         ),
         height: agendaHeight,
         padding: const EdgeInsets.all(16.0),
@@ -365,12 +410,12 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
 
 //meal to update
   Widget _buildCustomAgenda() {
-    if (_selectedDate == null) return SizedBox.shrink();
+    if (_selectedDate == null) return const SizedBox.shrink();
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFEEECE6), // Background color
-        borderRadius: BorderRadius.circular(20.0), // Rounded corners
+        color: const Color(0xFFEEECE6),
+        borderRadius: BorderRadius.circular(20.0),
       ),
       padding: const EdgeInsets.all(16.0),
       height: 300,
@@ -378,9 +423,9 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
         child: Column(
           children: [
             _buildMealContainer('Breakfast', _getMealItemsForTime('Breakfast')),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             _buildMealContainer('Lunch', _getMealItemsForTime('Lunch')),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             _buildMealContainer('Dinner', _getMealItemsForTime('Dinner')),
           ],
         ),
@@ -389,7 +434,7 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
   }
 
   Widget _buildMealContainer(String mealTitle, String mealItems) {
-    if (mealItems.isEmpty) return SizedBox.shrink();
+    if (mealItems.isEmpty) return const SizedBox.shrink();
 
     Color dotColor;
     String timeText;
@@ -423,7 +468,7 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
               color: Colors.grey.withOpacity(0.2),
               spreadRadius: 2,
               blurRadius: 5,
-              offset: Offset(0, 3),
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -433,7 +478,7 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
             Row(
               children: [
                 _buildHollowDot(dotColor),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text(
                   timeText,
                   style: GoogleFonts.robotoSerif(
@@ -443,7 +488,7 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
                 ),
               ],
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
               mealTitle,
               style: GoogleFonts.robotoSerif(
@@ -452,7 +497,7 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
                 color: Colors.black87,
               ),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               mealItems,
               style: GoogleFonts.robotoSerif(
@@ -509,9 +554,32 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
   }
 }
 
+// Utility function to convert Meeting to Appointment
+Appointment meetingToAppointment(Meeting meeting) {
+  return Appointment(
+    startTime: meeting.from,
+    endTime: meeting.to,
+    subject: meeting.eventName,
+    color: meeting.background,
+    isAllDay: meeting.isAllDay,
+  );
+}
+
+// Utility function to convert Appointment to Meeting
+Meeting appointmentToMeeting(Appointment appointment) {
+  return Meeting(
+    appointment.subject,
+    appointment.startTime,
+    appointment.endTime,
+    appointment.color,
+    appointment.isAllDay,
+  );
+}
+
 class MeetingDataSource extends CalendarDataSource {
   MeetingDataSource(List<Meeting> source) {
-    appointments = source;
+    appointments =
+        source.map((meeting) => meetingToAppointment(meeting)).toList();
   }
 
   @override
@@ -537,6 +605,21 @@ class MeetingDataSource extends CalendarDataSource {
   @override
   bool isAllDay(int index) {
     return appointments![index].isAllDay;
+  }
+
+  @override
+  Object? convertAppointmentToObject(
+      Object? appointment, Appointment calendarAppointment) {
+    final Appointment app = appointment as Appointment;
+    return Meeting(
+        app.subject, app.startTime, app.endTime, app.color, app.isAllDay);
+  }
+
+  void updateMeetingTime(
+      int index, DateTime newStartTime, DateTime newEndTime) {
+    appointments![index].from = newStartTime;
+    appointments![index].to = newEndTime;
+    notifyListeners(CalendarDataSourceAction.reset, appointments!);
   }
 }
 
