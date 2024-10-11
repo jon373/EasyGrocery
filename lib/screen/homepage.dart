@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:EasyGrocery/provider/cart_provider.dart';
 import 'package:EasyGrocery/provider/recommend.dart';
 import 'dart:math'; // Import the dart:math
+import 'package:EasyGrocery/provider/unique_id_manager.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -279,7 +280,6 @@ class _GroceryHomePageState extends State<HomePage> {
     );
   }
 
-// Modify the _showRecommendedItems function
   void _showRecommendedItems(String mealType) {
     double budget =
         double.tryParse(_budgetController.text.replaceAll(',', '')) ?? 0.0;
@@ -303,8 +303,18 @@ class _GroceryHomePageState extends State<HomePage> {
       double newTotalCost = totalCost + randomItem.price;
 
       if (newTotalCost <= budget) {
-        // Use a placeholder item to avoid null issues
-        quantityItem placeholder = quantityItem(item: randomItem, quantity: 0);
+        // Use the new method to fetch unique IDs for this item and its quantity
+        List<String> uniqueIds =
+            UniqueIdManager.getUniqueIdsForItem(randomItem.name, 1);
+        if (uniqueIds.length < 1) {
+          UniqueIdManager.generateUniqueIds(
+              randomItem.name, 1); // Generate one unique ID
+          uniqueIds = UniqueIdManager.getUniqueIdsForItem(randomItem.name, 1);
+        }
+
+        // Create a placeholder item with the unique IDs
+        quantityItem placeholder =
+            quantityItem(item: randomItem, quantity: 0, uniqueIds: []);
 
         // Find if the item already exists in the list
         quantityItem existingItem = finalRecommendedItems.firstWhere(
@@ -313,12 +323,17 @@ class _GroceryHomePageState extends State<HomePage> {
         );
 
         if (existingItem.quantity > 0) {
-          // If the item already exists, increase its quantity
+          // If the item already exists, increase its quantity and add a unique ID
           existingItem.quantity++;
+          existingItem.uniqueIds
+              .addAll(uniqueIds); // Add the unique IDs for this item
         } else {
-          // If the item does not exist, add it with quantity 1
-          finalRecommendedItems
-              .add(quantityItem(item: randomItem, quantity: 1));
+          // If the item does not exist, add it with quantity 1 and unique IDs
+          finalRecommendedItems.add(quantityItem(
+            item: randomItem,
+            quantity: 1,
+            uniqueIds: uniqueIds,
+          ));
         }
 
         totalCost = newTotalCost;
@@ -344,9 +359,20 @@ class _GroceryHomePageState extends State<HomePage> {
   void _addRecommendedItems(List<quantityItem> recommendedItems) {
     setState(() {
       for (var recommendedItem in recommendedItems) {
-        // Use a placeholder to avoid null issues
-        quantityItem placeholder =
-            quantityItem(item: recommendedItem.item, quantity: 0);
+        // Use the new method to fetch unique IDs for the item based on its quantity
+        List<String> uniqueIds = UniqueIdManager.getUniqueIdsForItem(
+            recommendedItem.item.name, recommendedItem.quantity);
+
+        if (uniqueIds.length < recommendedItem.quantity) {
+          UniqueIdManager.generateUniqueIds(recommendedItem.item.name,
+              recommendedItem.quantity - uniqueIds.length);
+          uniqueIds = UniqueIdManager.getUniqueIdsForItem(
+              recommendedItem.item.name, recommendedItem.quantity);
+        }
+
+        // Create a placeholder with unique IDs
+        quantityItem placeholder = quantityItem(
+            item: recommendedItem.item, quantity: 0, uniqueIds: []);
 
         // Find if the item already exists in the _addedItems list
         quantityItem existingItem = _addedItems.firstWhere(
@@ -355,11 +381,16 @@ class _GroceryHomePageState extends State<HomePage> {
         );
 
         if (existingItem.quantity > 0) {
-          // If the item already exists, increase its quantity
+          // If the item already exists, increase its quantity and add unique IDs
           existingItem.quantity += recommendedItem.quantity;
+          existingItem.uniqueIds.addAll(uniqueIds);
         } else {
-          // If the item does not exist, add it to the list
-          _addedItems.add(recommendedItem);
+          // If the item does not exist, add it to the list with unique IDs
+          _addedItems.add(quantityItem(
+            item: recommendedItem.item,
+            quantity: recommendedItem.quantity,
+            uniqueIds: uniqueIds,
+          ));
         }
 
         // Update the total amount

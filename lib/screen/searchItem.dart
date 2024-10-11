@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:EasyGrocery/provider/categories.dart';
+import 'package:EasyGrocery/provider/unique_id_manager.dart';
 
 class Searchitem extends StatefulWidget {
   final List<quantityItem> addedItems;
@@ -89,13 +90,12 @@ class _SearchitemState extends State<Searchitem> {
     );
   }
 
+  // Debugging print after generating unique IDs
   void _showQuantityDialog(GroceryItem item) {
-    final TextEditingController quantityController = TextEditingController();
-
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        int currentQuantity = 1; // Initialize the quantity to 1
+        int currentQuantity = 1;
 
         return StatefulBuilder(
           builder: (context, setState) {
@@ -110,6 +110,8 @@ class _SearchitemState extends State<Searchitem> {
                       setState(() {
                         if (currentQuantity > 1) {
                           currentQuantity--;
+                          // Remove unique ID when quantity is decremented
+                          UniqueIdManager.removeUniqueIds(item.name, 1);
                         }
                       });
                     },
@@ -123,6 +125,8 @@ class _SearchitemState extends State<Searchitem> {
                     onPressed: () {
                       setState(() {
                         currentQuantity++;
+                        // Generate unique ID when quantity is incremented
+                        UniqueIdManager.generateUniqueIds(item.name, 1);
                       });
                     },
                   ),
@@ -139,14 +143,29 @@ class _SearchitemState extends State<Searchitem> {
                   onPressed: () {
                     if (currentQuantity > 0) {
                       setState(() {
+                        // Fetch unique IDs for the current quantity
+                        List<String> uniqueIds =
+                            UniqueIdManager.getUniqueIdsForItem(
+                                item.name, currentQuantity);
+
+                        // Add the item to the cart with its unique IDs
                         int existingIndex = widget.addedItems.indexWhere(
                             (quantityItem) => quantityItem.item == item);
                         if (existingIndex != -1) {
                           widget.addedItems[existingIndex].quantity +=
                               currentQuantity;
+                          widget.addedItems[existingIndex].uniqueIds.addAll(
+                            uniqueIds.sublist(
+                              uniqueIds.length - currentQuantity,
+                              uniqueIds.length,
+                            ), // Only add the newly generated IDs
+                          );
                         } else {
                           widget.addedItems.add(quantityItem(
-                              item: item, quantity: currentQuantity));
+                            item: item,
+                            quantity: currentQuantity,
+                            uniqueIds: uniqueIds,
+                          ));
                         }
                       });
 

@@ -3,6 +3,7 @@ import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:EasyGrocery/provider/categories.dart';
+import 'package:EasyGrocery/provider/unique_id_manager.dart';
 
 class SmartCalendarPage extends StatefulWidget {
   final List<quantityItem> addedItems;
@@ -17,6 +18,7 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
   CalendarView _calendarView = CalendarView.month;
   DateTime? _selectedDate;
   late MeetingDataSource _meetingDataSource;
+  List<Meeting> _meetingsList = [];
 
   final Color _defaultAppBarColor =
       const Color(0xFFEEECE6); // Default AppBar color
@@ -36,7 +38,61 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
   @override
   void initState() {
     super.initState();
-    _meetingDataSource = MeetingDataSource(_getDataSource());
+    _meetingsList = _generateInitialMeetings();
+    _meetingDataSource = MeetingDataSource(_meetingsList);
+  }
+
+// Function to update the meeting time in the list of meetings
+  void _updateMeetingTime(
+      String uniqueId, DateTime newStartTime, DateTime newEndTime) {
+    setState(() {
+      // Find the meeting using the unique ID
+      final Meeting? meetingToUpdate = _meetingsList.firstWhere(
+        (meeting) => meeting.uniqueId == uniqueId,
+      );
+
+      if (meetingToUpdate != null) {
+        // Remove the old meeting and create a new one with the updated time and color
+        _meetingsList.remove(meetingToUpdate);
+
+        // Determine the new color based on the updated time range
+        Color updatedColor = _determineColorBasedOnTime(newStartTime);
+
+        // Create a new Meeting instance with updated times, color, and the same unique ID
+        Meeting updatedMeeting = Meeting(
+          meetingToUpdate.eventName,
+          newStartTime,
+          newEndTime,
+          updatedColor, // Use the new color
+          meetingToUpdate.isAllDay,
+          uniqueId, // Preserve the unique ID
+        );
+
+        // Add the updated meeting to the list
+        _meetingsList.add(updatedMeeting);
+
+        // Update the data source with the new meeting list
+        _meetingDataSource.appointments = _meetingsList
+            .map((meeting) => Appointment(
+                  startTime: meeting.from,
+                  endTime: meeting.to,
+                  subject: meeting.eventName,
+                  color: meeting.background,
+                  isAllDay: meeting.isAllDay,
+                  notes: meeting
+                      .uniqueId, // Set the uniqueId in the appointment notes
+                ))
+            .toList();
+
+        _meetingDataSource.notifyListeners(
+            CalendarDataSourceAction.reset, _meetingDataSource.appointments!);
+
+        print(
+            'Meeting with uniqueId $uniqueId updated to $newStartTime with color $updatedColor');
+      } else {
+        print('No meeting found to update for uniqueId: $uniqueId');
+      }
+    });
   }
 
   @override
@@ -137,18 +193,53 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
                         ),
                         dataSource: _meetingDataSource,
                         allowDragAndDrop: true,
+                        appointmentBuilder: (BuildContext context,
+                            CalendarAppointmentDetails details) {
+                          final Meeting meeting =
+                              appointmentToMeeting(details.appointments.first);
+
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: meeting.background,
+                              borderRadius: BorderRadius.circular(5.0),
+                            ),
+                            padding: const EdgeInsets.all(4.0),
+                            child: Center(
+                              child: Text(
+                                meeting.eventName,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          );
+                        },
+                        // onDragStart event for handling when drag starts
                         onDragStart:
                             (AppointmentDragStartDetails dragStartDetails) {
                           final Appointment draggedAppointment =
                               dragStartDetails.appointment as Appointment;
-                          print('Drag Started: ${draggedAppointment.subject}');
+
+                          // Print the dragged appointment's unique ID for debugging
+                          print(
+                              'Drag Started: ${draggedAppointment.subject}, Unique ID: ${draggedAppointment.notes}');
                         },
+
+// onDragUpdate event for handling drag updates
                         onDragUpdate:
                             (AppointmentDragUpdateDetails dragUpdateDetails) {
                           final Appointment draggedAppointment =
                               dragUpdateDetails.appointment as Appointment;
-                          print('Dragging: ${draggedAppointment.subject}');
+
+                          // Print dragging status for debugging
+                          print(
+                              'Dragging: ${draggedAppointment.subject}, Unique ID: ${draggedAppointment.notes}');
                         },
+
+// onDragEnd event for handling when drag ends
                         onDragEnd: (AppointmentDragEndDetails dragEndDetails) {
                           if (dragEndDetails.appointment != null &&
                               dragEndDetails.droppingTime != null) {
@@ -156,28 +247,28 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
                                 dragEndDetails.appointment as Appointment;
                             final DateTime newStartTime =
                                 dragEndDetails.droppingTime!;
-                            final DateTime newEndTime =
-                                newStartTime.add(const Duration(hours: 2));
+                            final DateTime newEndTime = newStartTime.add(
+                                const Duration(hours: 2)); // Example duration
 
+                            // Find the corresponding meeting based on the unique ID stored in the 'notes' property
                             final Meeting? draggedMeeting =
-                                _meetingDataSource.appointments!.firstWhere(
-                              (element) =>
-                                  element.eventName ==
-                                  draggedAppointment.subject,
-                              orElse: () => null,
-                            ) as Meeting?;
+                                _meetingsList.firstWhere(
+                              (meeting) =>
+                                  meeting.uniqueId == draggedAppointment.notes,
+                            );
 
+                            // Update the meeting time if found
                             if (draggedMeeting != null) {
-                              final int index = _meetingDataSource.appointments!
-                                  .indexOf(draggedMeeting);
+                              _updateMeetingTime(draggedMeeting.uniqueId,
+                                  newStartTime, newEndTime);
 
-                              _meetingDataSource.updateMeetingTime(
-                                  index, newStartTime, newEndTime);
+                              // Print for debugging to confirm the update
                               print(
-                                  'Drag Ended: ${draggedMeeting.eventName} moved to $newStartTime');
+                                  'Updated Meeting: ${draggedAppointment.subject} (Unique ID: ${draggedAppointment.notes}) moved to $newStartTime');
                             }
                           }
                         },
+
                         onTap: (details) {
                           if (details.targetElement ==
                               CalendarElement.calendarCell) {
@@ -302,6 +393,10 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
   }
 
   List<Meeting> _getDataSource() {
+    return _meetingsList;
+  }
+
+  List<Meeting> _generateInitialMeetings() {
     final List<Meeting> meetings = [];
     final DateTime today = DateTime.now();
 
@@ -309,56 +404,83 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
       int totalQuantity = cartItem.quantity;
       int day = 0;
 
-      while (totalQuantity > 0) {
+      // Fetch the unique IDs for the item based on its quantity
+      List<String> uniqueIds = UniqueIdManager.getUniqueIdsForItem(
+          cartItem.item.name, totalQuantity);
+
+      // Use the fetched unique IDs to create Meetings
+      for (var uniqueId in uniqueIds) {
         DateTime date = today.add(Duration(days: day));
 
-        // Pang categoized kung yung items is for breakfast
+        // Check meal type and add Meeting based on meal type
         if (cartItem.item.mealType.contains('Breakfast') && totalQuantity > 0) {
           meetings.add(
             Meeting(
-              '${cartItem.item.name} (1x)',
-              DateTime(date.year, date.month, date.day, 7, 0),
-              DateTime(date.year, date.month, date.day, 9, 0),
+              cartItem.item.name,
+              DateTime(date.year, date.month, date.day, 7,
+                  0), // 7:00 AM start for Breakfast
+              DateTime(date.year, date.month, date.day, 9,
+                  0), // 9:00 AM end for Breakfast
               Colors.green,
               false,
+              uniqueId, // Use the unique ID for each quantity
             ),
           );
-          totalQuantity--;
+          totalQuantity--; // Keep totalQuantity decrement for each meeting
         }
 
-        // If pang lunch
+        // If the item is categorized for Lunch
         if (cartItem.item.mealType.contains('Lunch') && totalQuantity > 0) {
           meetings.add(
             Meeting(
-              '${cartItem.item.name} (1x)',
-              DateTime(date.year, date.month, date.day, 12, 0),
-              DateTime(date.year, date.month, date.day, 14, 30),
+              cartItem.item.name,
+              DateTime(date.year, date.month, date.day, 12,
+                  0), // 12:00 PM start for Lunch
+              DateTime(date.year, date.month, date.day, 14,
+                  30), // 2:30 PM end for Lunch
               Colors.yellow,
               false,
+              uniqueId, // Use the unique ID for each quantity
             ),
           );
-          totalQuantity--;
+          totalQuantity--; // Keep totalQuantity decrement for each meeting
         }
 
-        // If pang dinner
+        // If the item is categorized for Dinner
         if (cartItem.item.mealType.contains('Dinner') && totalQuantity > 0) {
           meetings.add(
             Meeting(
-              '${cartItem.item.name} (1x)',
-              DateTime(date.year, date.month, date.day, 19, 0),
-              DateTime(date.year, date.month, date.day, 21, 0),
+              cartItem.item.name,
+              DateTime(date.year, date.month, date.day, 19,
+                  0), // 7:00 PM start for Dinner
+              DateTime(date.year, date.month, date.day, 21,
+                  0), // 9:00 PM end for Dinner
               Colors.red,
               false,
+              uniqueId, // Use the unique ID for each quantity
             ),
           );
-          totalQuantity--;
+          totalQuantity--; // Keep totalQuantity decrement for each meeting
         }
 
-        day++;
+        day++; // Increment the day for each unique item added
       }
     }
 
     return meetings;
+  }
+
+  Color _determineColorBasedOnTime(DateTime startTime) {
+    // Determine the meal type based on the start time and return the corresponding color
+    if (startTime.hour >= 0 && startTime.hour < 12) {
+      return Colors.green; // Breakfast color
+    } else if (startTime.hour >= 12 && startTime.hour < 18) {
+      return Colors.yellow; // Lunch color
+    } else if (startTime.hour >= 18 && startTime.hour < 24) {
+      return Colors.red; // Dinner color
+    } else {
+      return Colors.grey; // Default color if none match
+    }
   }
 
   Widget _buildAgendaOrMessages() {
@@ -536,11 +658,11 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
 
       switch (mealTime) {
         case 'Breakfast':
-          return meeting.from.hour == 7;
+          return meeting.from.hour >= 0 && meeting.from.hour < 12;
         case 'Lunch':
-          return meeting.from.hour == 12;
+          return meeting.from.hour >= 12 && meeting.from.hour < 18;
         case 'Dinner':
-          return meeting.from.hour == 19;
+          return meeting.from.hour >= 18 && meeting.from.hour <= 23;
         default:
           return false;
       }
@@ -562,24 +684,37 @@ Appointment meetingToAppointment(Meeting meeting) {
     subject: meeting.eventName,
     color: meeting.background,
     isAllDay: meeting.isAllDay,
+    notes: meeting.uniqueId, // Store unique ID in the notes property
   );
 }
 
 // Utility function to convert Appointment to Meeting
 Meeting appointmentToMeeting(Appointment appointment) {
+  print(
+      'Creating Meeting: ${appointment.subject}, Unique ID: ${appointment.notes}');
   return Meeting(
     appointment.subject,
     appointment.startTime,
     appointment.endTime,
     appointment.color,
     appointment.isAllDay,
+    appointment.notes ?? 'default_id',
   );
 }
 
 class MeetingDataSource extends CalendarDataSource {
   MeetingDataSource(List<Meeting> source) {
-    appointments =
-        source.map((meeting) => meetingToAppointment(meeting)).toList();
+    appointments = source
+        .map((meeting) => Appointment(
+              startTime: meeting.from,
+              endTime: meeting.to,
+              subject: meeting.eventName,
+              color: meeting.background,
+              isAllDay: meeting.isAllDay,
+              notes:
+                  meeting.uniqueId, // Set the unique ID in the notes property
+            ))
+        .toList();
   }
 
   @override
@@ -612,7 +747,14 @@ class MeetingDataSource extends CalendarDataSource {
       Object? appointment, Appointment calendarAppointment) {
     final Appointment app = appointment as Appointment;
     return Meeting(
-        app.subject, app.startTime, app.endTime, app.color, app.isAllDay);
+      app.subject,
+      app.startTime,
+      app.endTime,
+      app.color,
+      app.isAllDay,
+      app.notes ??
+          'dummy_id', // Use dummy_id instead of null if notes are not provided
+    );
   }
 
   void updateMeetingTime(
@@ -624,13 +766,15 @@ class MeetingDataSource extends CalendarDataSource {
 }
 
 class Meeting {
-  Meeting(this.eventName, this.from, this.to, this.background, this.isAllDay);
+  Meeting(this.eventName, this.from, this.to, this.background, this.isAllDay,
+      this.uniqueId);
 
   String eventName;
   DateTime from;
   DateTime to;
   Color background;
   bool isAllDay;
+  String uniqueId;
 }
 
 extension DateTimeComparison on DateTime {
