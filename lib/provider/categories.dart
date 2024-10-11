@@ -16,8 +16,9 @@ class GroceryItem {
 class quantityItem {
   GroceryItem item; // Removed `final`
   int quantity;
-
-  quantityItem({required this.item, required this.quantity});
+  List<String> uniqueIds;
+  quantityItem(
+      {required this.item, required this.quantity, required this.uniqueIds});
 }
 
 // Updated list of grocery items with mealType included

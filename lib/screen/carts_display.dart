@@ -6,12 +6,14 @@ import '../provider/categories.dart';
 import 'checkout_cart.dart';
 
 class CartsScreen extends StatefulWidget {
+  const CartsScreen({super.key});
+
   @override
   _CartsScreenState createState() => _CartsScreenState();
 }
 
 class _CartsScreenState extends State<CartsScreen> {
-  ValueNotifier<double> _selectedTotalAmount = ValueNotifier<double>(0.0);
+  final ValueNotifier<double> _selectedTotalAmount = ValueNotifier<double>(0.0);
 
   @override
   void dispose() {
@@ -39,8 +41,8 @@ class _CartsScreenState extends State<CartsScreen> {
         .hideCurrentSnackBar(); // Hide any existing SnackBars
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("Multiple carts deleted"),
-        duration: Duration(seconds: 3), // Show for 3 seconds
+        content: const Text("Multiple carts deleted"),
+        duration: const Duration(seconds: 3), // Show for 3 seconds
         action: SnackBarAction(
           label: "Undo",
           onPressed: () {
@@ -77,7 +79,7 @@ class _CartsScreenState extends State<CartsScreen> {
               ? "Multiple carts deleted" // Message for multiple deletions
               : "${cart.name} deleted", // Message for single deletion
         ),
-        duration: Duration(seconds: 3), // Show for 3 seconds
+        duration: const Duration(seconds: 3), // Show for 3 seconds
         action: SnackBarAction(
           label: "Undo",
           onPressed: () {
@@ -93,7 +95,7 @@ class _CartsScreenState extends State<CartsScreen> {
             } catch (e) {
               // If there was an error during restoration, handle it gracefully
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error: Unable to restore carts')),
+                const SnackBar(content: Text('Error: Unable to restore carts')),
               );
             }
           },
@@ -108,7 +110,7 @@ class _CartsScreenState extends State<CartsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Carts'),
+        title: const Text('Carts'),
       ),
       body: carts.isEmpty
           ? _buildEmptyCartMessage(context)
@@ -137,10 +139,10 @@ class _CartsScreenState extends State<CartsScreen> {
               // Calculate the total amount and total quantity for each cart
               double cartTotal = 0.0;
               int totalItems = 0;
-              cart.items.forEach((quantityItem item) {
+              for (var item in cart.items) {
                 cartTotal += item.item.price * item.quantity;
                 totalItems += item.quantity; // Accumulate total items count
-              });
+              }
 
               // Dismissible widget with the modified onDismissed method
               return Dismissible(
@@ -148,9 +150,9 @@ class _CartsScreenState extends State<CartsScreen> {
                 direction: DismissDirection.endToStart, // Swipe right to left
                 background: Container(
                   color: Colors.red, // Background color when swiping
-                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   alignment: Alignment.centerRight,
-                  child: Icon(
+                  child: const Icon(
                     Icons.delete,
                     color: Colors.white,
                   ),
@@ -163,7 +165,7 @@ class _CartsScreenState extends State<CartsScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10.0),
                   ),
-                  margin: EdgeInsets.all(8.0),
+                  margin: const EdgeInsets.all(8.0),
                   child: ListTile(
                     title: Text(cart.name),
                     subtitle: Text(
@@ -207,7 +209,7 @@ class _CartsScreenState extends State<CartsScreen> {
             children: [
               Text(
                 'Total: ₱${totalAmount.toStringAsFixed(2)}',
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.black, // Keep the total value in black
@@ -221,10 +223,10 @@ class _CartsScreenState extends State<CartsScreen> {
                     : null, // Disable the button when no carts are selected
                 style: ElevatedButton.styleFrom(
                   backgroundColor: totalAmount > 0
-                      ? Color(0xFFBD4254)
+                      ? const Color(0xFFBD4254)
                       : Colors.grey, // Use backgroundColor instead of primary
                 ),
-                child: Text(
+                child: const Text(
                   'Check Out',
                   style: TextStyle(color: Colors.white),
                 ),
@@ -284,7 +286,7 @@ class _CartsScreenState extends State<CartsScreen> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text("No carts selected for checkout."),
         ),
       );
