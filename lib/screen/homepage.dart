@@ -161,47 +161,109 @@ class _GroceryHomePageState extends State<HomePage> {
             borderRadius: BorderRadius.circular(12.0),
           ),
           child: Container(
-            width: 300,
-            height: 400,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Relevant Items for ${selectedItem.item.name}',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+            width: 350,
+            height: 450,
+            decoration: BoxDecoration(
+              color: Color(0xFFEEECE6), // Background color of the dialog
+              borderRadius: BorderRadius.circular(12.0), // Rounded corners
+            ),
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start, // Align content to the start (left)
+              children: [
+                Container(
+                  height:
+                      55, // Adjust this value to control the title bar height
+                  padding: EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color:
+                        Color(0xFFDBD5CB), // Background color for the title bar
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(12.0), // Rounded top corners
+                    ),
                   ),
-                  SizedBox(height: 16),
-                  Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft, // Align title to the left
+                    child: Text(
+                      'Related Items',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20, // Font size for the title text
+                        color: Colors
+                            .black, // Change text color to white for contrast
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: ListView(
                       children: relevantItems.map((item) {
-                        return ListTile(
-                          title: Text(item.name),
-                          subtitle: Text(
-                              '${item.category} - P${item.price.toStringAsFixed(2)}'),
-                          onTap: () {
-                            setState(() {
-                              // Replace the current item in the list
-                              selectedItem.item = item;
-                              // Update the added items to reflect the change and recalculate the total
-                              _updateAddedItems(_addedItems);
-                            });
-                            Navigator.of(context).pop(); // Close the dialog
-                          },
+                        return Card(
+                          // Each item in a card for better separation
+                          margin: EdgeInsets.symmetric(vertical: 4.0),
+                          color: Color(0xFFFFFFFF),
+                          child: ListTile(
+                            title: Text(
+                              item.name,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600, // Bold item names
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${item.category} - P${item.price.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            onTap: () {
+                              setState(() {
+                                selectedItem.item = item;
+                                _updateAddedItems(_addedItems);
+                              });
+                              Navigator.of(context).pop(); // Close the dialog
+                            },
+                          ),
                         );
                       }).toList(),
                     ),
                   ),
-                  SizedBox(height: 16),
-                  TextButton(
+                ),
+                SizedBox(height: 16),
+                Center(
+                  // Center the button
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      backgroundColor:
+                          Color(0xFFEEECE6), // Button background color
+                      foregroundColor:
+                          Colors.black, // Text color for the button
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(8.0), // Rounded button
+                      ),
+                    ),
                     onPressed: () {
                       Navigator.of(context).pop(); // Close the dialog
                     },
-                    child: Text('Close'),
+                    child: Text(
+                      'Close',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
@@ -922,63 +984,75 @@ class _GroceryHomePageState extends State<HomePage> {
                   },
                   child: Card(
                     elevation: 4,
-                    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                    child: ListTile(
-                      onTap: () => _showRelevantItems(item),
-                      title: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            item.item.name,
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black,
-                            ),
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Color(0xFFB9ACA6),
-                              border:
-                                  Border.all(color: Colors.grey, width: 1.0),
-                              borderRadius: BorderRadius.circular(5.0),
-                            ),
-                            child: Row(
-                              children: [
-                                IconButton(
-                                  icon: Icon(Icons.remove),
-                                  onPressed: () => _decreaseQuantity(item),
+                    margin: EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+                    color: Color(0xFFFFFFFF),
+                    child: Container(
+                      padding: EdgeInsets.all(
+                          16), // Add padding inside the card for larger area
+                      constraints: BoxConstraints(
+                        minHeight: 80, // Set a minimum height for the card
+                      ),
+                      child: ListTile(
+                        onTap: () => _showRelevantItems(item),
+                        title: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                item.item.name, // Item name
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black,
                                 ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8.0),
-                                  child: Text(
-                                    '${item.quantity}',
-                                    style: TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                      color: Colors.black,
-                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        // Align quantity controls to the right
+                        trailing: Container(
+                          decoration: BoxDecoration(
+                            color: Color(0xFFB9ACA6),
+                            border: Border.all(color: Colors.grey, width: 1.0),
+                            borderRadius: BorderRadius.circular(5.0),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.remove),
+                                onPressed: () => _decreaseQuantity(item),
+                              ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8.0),
+                                child: Text(
+                                  '${item.quantity}', // Display quantity
+                                  style: TextStyle(
+                                    fontFamily: 'Poppins',
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    color: Colors.black,
                                   ),
                                 ),
-                                IconButton(
-                                  icon: Icon(Icons.add),
-                                  onPressed: () => _increaseQuantity(item),
-                                ),
-                              ],
-                            ),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.add),
+                                onPressed: () => _increaseQuantity(item),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      subtitle: Text(
-                        'Total: ₱${(item.item.price * item.quantity).toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontFamily: 'Poppins-Regular',
-                          fontWeight: FontWeight.w400,
-                          fontSize: 16,
-                          color: Colors.grey,
+                        ),
+
+                        subtitle: Text(
+                          'Total: ₱${(item.item.price * item.quantity).toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontFamily: 'Poppins-Regular',
+                            fontWeight: FontWeight.w400,
+                            fontSize: 16,
+                            color: Colors.grey,
+                          ),
                         ),
                       ),
                     ),
