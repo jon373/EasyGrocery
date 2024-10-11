@@ -10,8 +10,11 @@ import 'package:provider/provider.dart';
 import 'package:EasyGrocery/provider/cart_provider.dart';
 import 'package:EasyGrocery/provider/recommend.dart';
 import 'dart:math'; // Import the dart:math
+import 'package:EasyGrocery/provider/unique_id_manager.dart';
 
 class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
   @override
   _GroceryHomePageState createState() => _GroceryHomePageState();
 }
@@ -25,7 +28,7 @@ class _GroceryHomePageState extends State<HomePage> {
       []; // List to hold added items and their quantities
 
   String? _selectedStore;
-  List<String> _storeList = [
+  final List<String> _storeList = [
     'Store A',
     'Store B',
     'Store C',
@@ -83,7 +86,7 @@ class _GroceryHomePageState extends State<HomePage> {
             });
           },
         ),
-        duration: Duration(seconds: 3), // Show the SnackBar for 3 seconds
+        duration: const Duration(seconds: 3), // Show the SnackBar for 3 seconds
       ),
     );
   }
@@ -101,7 +104,7 @@ class _GroceryHomePageState extends State<HomePage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Remove Item'),
+          title: const Text('Remove Item'),
           content: Text(
               'Are you sure you want to remove ${quantityItem.item.name} from the cart?'),
           actions: [
@@ -116,13 +119,13 @@ class _GroceryHomePageState extends State<HomePage> {
                 });
                 Navigator.of(context).pop(); // Close the dialog
               },
-              child: Text('Yes'),
+              child: const Text('Yes'),
             ),
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close the dialog
               },
-              child: Text('No'),
+              child: const Text('No'),
             ),
           ],
         );
@@ -306,27 +309,27 @@ class _GroceryHomePageState extends State<HomePage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Select category'),
+          title: const Text('Select category'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               // List of meal types (Breakfast, Lunch, Dinner) as options
               ListTile(
-                title: Text('Breakfast'),
+                title: const Text('Breakfast'),
                 onTap: () {
                   Navigator.pop(context);
                   _showRecommendedItems('Breakfast');
                 },
               ),
               ListTile(
-                title: Text('Lunch'),
+                title: const Text('Lunch'),
                 onTap: () {
                   Navigator.pop(context);
                   _showRecommendedItems('Lunch');
                 },
               ),
               ListTile(
-                title: Text('Dinner'),
+                title: const Text('Dinner'),
                 onTap: () {
                   Navigator.pop(context);
                   _showRecommendedItems('Dinner');
@@ -339,7 +342,6 @@ class _GroceryHomePageState extends State<HomePage> {
     );
   }
 
-// Modify the _showRecommendedItems function
   void _showRecommendedItems(String mealType) {
     double budget =
         double.tryParse(_budgetController.text.replaceAll(',', '')) ?? 0.0;
@@ -363,8 +365,18 @@ class _GroceryHomePageState extends State<HomePage> {
       double newTotalCost = totalCost + randomItem.price;
 
       if (newTotalCost <= budget) {
-        // Use a placeholder item to avoid null issues
-        quantityItem placeholder = quantityItem(item: randomItem, quantity: 0);
+        // Use the new method to fetch unique IDs for this item and its quantity
+        List<String> uniqueIds =
+            UniqueIdManager.getUniqueIdsForItem(randomItem.name, 1);
+        if (uniqueIds.length < 1) {
+          UniqueIdManager.generateUniqueIds(
+              randomItem.name, 1); // Generate one unique ID
+          uniqueIds = UniqueIdManager.getUniqueIdsForItem(randomItem.name, 1);
+        }
+
+        // Create a placeholder item with the unique IDs
+        quantityItem placeholder =
+            quantityItem(item: randomItem, quantity: 0, uniqueIds: []);
 
         // Find if the item already exists in the list
         quantityItem existingItem = finalRecommendedItems.firstWhere(
@@ -373,12 +385,17 @@ class _GroceryHomePageState extends State<HomePage> {
         );
 
         if (existingItem.quantity > 0) {
-          // If the item already exists, increase its quantity
+          // If the item already exists, increase its quantity and add a unique ID
           existingItem.quantity++;
+          existingItem.uniqueIds
+              .addAll(uniqueIds); // Add the unique IDs for this item
         } else {
-          // If the item does not exist, add it with quantity 1
-          finalRecommendedItems
-              .add(quantityItem(item: randomItem, quantity: 1));
+          // If the item does not exist, add it with quantity 1 and unique IDs
+          finalRecommendedItems.add(quantityItem(
+            item: randomItem,
+            quantity: 1,
+            uniqueIds: uniqueIds,
+          ));
         }
 
         totalCost = newTotalCost;
@@ -404,9 +421,20 @@ class _GroceryHomePageState extends State<HomePage> {
   void _addRecommendedItems(List<quantityItem> recommendedItems) {
     setState(() {
       for (var recommendedItem in recommendedItems) {
-        // Use a placeholder to avoid null issues
-        quantityItem placeholder =
-            quantityItem(item: recommendedItem.item, quantity: 0);
+        // Use the new method to fetch unique IDs for the item based on its quantity
+        List<String> uniqueIds = UniqueIdManager.getUniqueIdsForItem(
+            recommendedItem.item.name, recommendedItem.quantity);
+
+        if (uniqueIds.length < recommendedItem.quantity) {
+          UniqueIdManager.generateUniqueIds(recommendedItem.item.name,
+              recommendedItem.quantity - uniqueIds.length);
+          uniqueIds = UniqueIdManager.getUniqueIdsForItem(
+              recommendedItem.item.name, recommendedItem.quantity);
+        }
+
+        // Create a placeholder with unique IDs
+        quantityItem placeholder = quantityItem(
+            item: recommendedItem.item, quantity: 0, uniqueIds: []);
 
         // Find if the item already exists in the _addedItems list
         quantityItem existingItem = _addedItems.firstWhere(
@@ -415,11 +443,16 @@ class _GroceryHomePageState extends State<HomePage> {
         );
 
         if (existingItem.quantity > 0) {
-          // If the item already exists, increase its quantity
+          // If the item already exists, increase its quantity and add unique IDs
           existingItem.quantity += recommendedItem.quantity;
+          existingItem.uniqueIds.addAll(uniqueIds);
         } else {
-          // If the item does not exist, add it to the list
-          _addedItems.add(recommendedItem);
+          // If the item does not exist, add it to the list with unique IDs
+          _addedItems.add(quantityItem(
+            item: recommendedItem.item,
+            quantity: recommendedItem.quantity,
+            uniqueIds: uniqueIds,
+          ));
         }
 
         // Update the total amount
@@ -433,12 +466,12 @@ class _GroceryHomePageState extends State<HomePage> {
     });
   }
 
-  List<Cart> _carts = [];
+  final List<Cart> _carts = [];
 
 // Show cart selection dialog
   void _showCartSelection(BuildContext context) {
     // Create a ScrollController to control the ListView
-    ScrollController _scrollController = ScrollController();
+    ScrollController scrollController = ScrollController();
 
     showDialog(
       context: context,
@@ -446,8 +479,8 @@ class _GroceryHomePageState extends State<HomePage> {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return AlertDialog(
-              title: Text('Select a Cart'),
-              content: Container(
+              title: const Text('Select a Cart'),
+              content: SizedBox(
                 width: double.maxFinite, // Set width to fit the screen width
                 height: 300.0, // Set a fixed height for the dialog content
                 child: Consumer<CartProvider>(
@@ -459,7 +492,7 @@ class _GroceryHomePageState extends State<HomePage> {
                         Expanded(
                           child: ListView.builder(
                             controller:
-                                _scrollController, // Attach the scroll controller
+                                scrollController, // Attach the scroll controller
                             shrinkWrap: true,
                             itemCount: cartProvider.carts.length,
                             itemBuilder: (context, index) {
@@ -478,7 +511,7 @@ class _GroceryHomePageState extends State<HomePage> {
                             },
                           ),
                         ),
-                        SizedBox(
+                        const SizedBox(
                             height:
                                 16), // Add spacing between the list and button
 
@@ -494,35 +527,36 @@ class _GroceryHomePageState extends State<HomePage> {
                                   setState(() {});
 
                                   // Scroll to the bottom of the ListView after adding a new cart
-                                  Future.delayed(Duration(milliseconds: 300),
-                                      () {
-                                    if (_scrollController.hasClients) {
-                                      _scrollController.animateTo(
-                                        _scrollController
+                                  Future.delayed(
+                                      const Duration(milliseconds: 300), () {
+                                    if (scrollController.hasClients) {
+                                      scrollController.animateTo(
+                                        scrollController
                                             .position.maxScrollExtent,
-                                        duration: Duration(milliseconds: 300),
+                                        duration:
+                                            const Duration(milliseconds: 300),
                                         curve: Curves.easeOut,
                                       );
                                     }
                                   });
                                 }
-                              : null, // Disable the button when 10 carts are reached
-                          child: Text(
-                            'Add New Cart',
-                            style: TextStyle(color: Colors.white),
-                          ),
+                              : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: cartProvider.carts.length < 10
-                                ? Color(
+                                ? const Color(
                                     0xFFBD4254) // Original color when active
                                 : Colors.grey, // Turn grey when disabled
-                            textStyle: TextStyle(
+                            textStyle: const TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.bold),
-                            padding: EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8.0),
                             ),
+                          ), // Disable the button when 10 carts are reached
+                          child: Text(
+                            'Add New Cart',
+                            style: TextStyle(color: Colors.white),
                           ),
                         ),
                       ],
@@ -543,11 +577,11 @@ class _GroceryHomePageState extends State<HomePage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('No Items to Save'),
-          content: Text('Please add items to the cart before saving.'),
+          title: const Text('No Items to Save'),
+          content: const Text('Please add items to the cart before saving.'),
           actions: [
             TextButton(
-              child: Text('OK'),
+              child: const Text('OK'),
               onPressed: () {
                 Navigator.pop(context); // Close the dialog
               },
@@ -564,11 +598,12 @@ class _GroceryHomePageState extends State<HomePage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Item Added'),
-          content: Text('Items have been successfully saved to the cart.'),
+          title: const Text('Item Added'),
+          content:
+              const Text('Items have been successfully saved to the cart.'),
           actions: [
             TextButton(
-              child: Text('OK'),
+              child: const Text('OK'),
               onPressed: () {
                 Navigator.pop(context); // Close the success notification dialog
               },
@@ -647,14 +682,14 @@ class _GroceryHomePageState extends State<HomePage> {
         (budget > 0); // Check if the budget is greater than 0
 
     return Scaffold(
-      backgroundColor: Color(0xFFEEECE6),
+      backgroundColor: const Color(0xFFEEECE6),
       appBar: AppBar(
-        backgroundColor: Color(0xFFEEECE6),
+        backgroundColor: const Color(0xFFEEECE6),
         leading: Builder(
           builder: (BuildContext context) {
             return IconButton(
-              icon: Icon(Icons.menu),
-              color: Color(0xFFBD4254),
+              icon: const Icon(Icons.menu),
+              color: const Color(0xFFBD4254),
               iconSize: 36.0,
               onPressed: () {
                 Scaffold.of(context).openDrawer(); // Open the drawer
@@ -669,15 +704,15 @@ class _GroceryHomePageState extends State<HomePage> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: <Widget>[
-            DrawerHeader(
-              child: Text('Menu',
-                  style: TextStyle(color: Colors.white, fontSize: 24)),
+            const DrawerHeader(
               decoration: BoxDecoration(
                 color: Colors.blue,
               ),
+              child: Text('Menu',
+                  style: TextStyle(color: Colors.white, fontSize: 24)),
             ),
             ListTile(
-              title: Text('Carts'),
+              title: const Text('Carts'),
               onTap: () {
                 Navigator.pop(context); // Close the drawer first
                 Navigator.push(
@@ -687,13 +722,13 @@ class _GroceryHomePageState extends State<HomePage> {
               },
             ),
             ListTile(
-              title: Text('Settings'),
+              title: const Text('Settings'),
               onTap: () {
                 Navigator.pop(context); // Close the drawer
               },
             ),
             ListTile(
-                title: Text('About'),
+                title: const Text('About'),
                 onTap: () {
                   Navigator.pop(context); // Close the drawer
                 }),
@@ -725,7 +760,7 @@ class _GroceryHomePageState extends State<HomePage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
+                      const Text(
                         'Easy Grocery',
                         style: TextStyle(
                           fontFamily: 'Raleway-Bold',
@@ -747,7 +782,8 @@ class _GroceryHomePageState extends State<HomePage> {
                       ),
                     ],
                   ),
-                  SizedBox(height: 25), // Space between the title and TextField
+                  const SizedBox(
+                      height: 25), // Space between the title and TextField
 
                   // Row containing TextField and DropdownButton
                   Row(
@@ -758,19 +794,19 @@ class _GroceryHomePageState extends State<HomePage> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             border: Border.all(
-                              color: Color(0xFFA79B95), // Border color
+                              color: const Color(0xFFA79B95), // Border color
                               width: 2.0,
                             ),
                             borderRadius: BorderRadius.circular(5.0),
                           ),
                           child: Stack(
                             children: [
-                              Positioned(
+                              const Positioned(
                                 left: 5.0,
                                 top: 15.0, // Adjust this value as needed
                                 child: Text(
                                   'Budget:',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Color(0xFFA0616A), // Text color
                                     fontSize: 14.0,
                                     fontFamily: 'Poppins-Regular',
@@ -794,7 +830,7 @@ class _GroceryHomePageState extends State<HomePage> {
                                   ),
                                   border: InputBorder.none,
                                   suffixIcon: IconButton(
-                                    icon: ImageIcon(
+                                    icon: const ImageIcon(
                                       AssetImage(
                                           'assets/images/enter_icon.png'),
                                       color: Colors.grey,
@@ -828,21 +864,21 @@ class _GroceryHomePageState extends State<HomePage> {
                           ),
                         ),
                       ),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Container(
                         width: 180, // Fixed width or adjust as needed
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           border: Border.all(
-                            color: Color(0xFFA79B95), // Border color
+                            color: const Color(0xFFA79B95), // Border color
                             width: 2.0,
                           ),
                           borderRadius: BorderRadius.circular(5.0),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
-                            hint: Text(
+                            hint: const Text(
                               'Select Store',
                               style: TextStyle(
                                 color: Color(0xFFA0616A), // Hint text color
@@ -868,7 +904,7 @@ class _GroceryHomePageState extends State<HomePage> {
                                   value: value,
                                   child: Text(
                                     value,
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       color:
                                           Color(0xFFBD4254), // Item text color
                                       fontWeight:
@@ -876,7 +912,7 @@ class _GroceryHomePageState extends State<HomePage> {
                                     ),
                                   ),
                                 );
-                              }).toList(),
+                              }),
                             ],
                             onChanged: (String? newValue) {
                               setState(() {
@@ -884,7 +920,7 @@ class _GroceryHomePageState extends State<HomePage> {
                               });
                             },
                             isExpanded: true,
-                            icon: Icon(
+                            icon: const Icon(
                               Icons.arrow_drop_down,
                               color: Color(0xFFBD4254), // Icon color
                             ),
@@ -894,7 +930,7 @@ class _GroceryHomePageState extends State<HomePage> {
                     ],
                   ),
 
-                  SizedBox(height: 1.0),
+                  const SizedBox(height: 1.0),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -903,7 +939,7 @@ class _GroceryHomePageState extends State<HomePage> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Remaining Budget: \₱${isBudgetEntered ? currencyFormat.format(remainingBudget) : '0.00'}',
+                            'Remaining Budget: ₱${isBudgetEntered ? currencyFormat.format(remainingBudget) : '0.00'}',
                             style: TextStyle(
                               fontFamily: 'Poppins-Regular',
                               // If budget is not entered, keep the text color black. Otherwise, change color based on remaining budget
@@ -930,7 +966,7 @@ class _GroceryHomePageState extends State<HomePage> {
                                 ),
                               );
                             },
-                            child: Text(
+                            child: const Text(
                               'Add Item',
                               style: TextStyle(
                                 fontSize: 20,
@@ -958,9 +994,9 @@ class _GroceryHomePageState extends State<HomePage> {
                   direction: DismissDirection.endToStart, // Swipe right-to-left
                   background: Container(
                     color: Colors.red, // Background color for the delete action
-                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     alignment: Alignment.centerRight, // Align to the right side
-                    child: Row(
+                    child: const Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Text(
@@ -1062,7 +1098,7 @@ class _GroceryHomePageState extends State<HomePage> {
             ),
           ),
 
-          SizedBox(height: 16), // Space before the checkout row
+          const SizedBox(height: 16), // Space before the checkout row
 
           // Checkout Row
           Container(
@@ -1079,7 +1115,7 @@ class _GroceryHomePageState extends State<HomePage> {
                         horizontal: 16.0, vertical: 8.0),
                     child: Text(
                       'Total: ₱${currencyFormat.format(_totalAmount)}',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1091,9 +1127,10 @@ class _GroceryHomePageState extends State<HomePage> {
                   padding: const EdgeInsets.symmetric(vertical: 12.0),
                   decoration: BoxDecoration(
                     color: _addedItems.isNotEmpty
-                        ? Color(0xFFBD4254) // Original color when items exist
+                        ? const Color(
+                            0xFFBD4254) // Original color when items exist
                         : Colors.grey, // Darkened grey when no items
-                    borderRadius: BorderRadius.only(
+                    borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(10.0),
                       bottomLeft: Radius.circular(10.0),
                     ),
@@ -1102,8 +1139,8 @@ class _GroceryHomePageState extends State<HomePage> {
                     children: [
                       // Add to Cart Button
                       IconButton(
-                        icon:
-                            Icon(Icons.add_shopping_cart, color: Colors.white),
+                        icon: const Icon(Icons.add_shopping_cart,
+                            color: Colors.white),
                         onPressed: _addedItems.isNotEmpty
                             ? () {
                                 // Show the modal bottom sheet with cart options
@@ -1143,7 +1180,20 @@ class _GroceryHomePageState extends State<HomePage> {
                                   ),
                                 );
                               }
-                            : null, // Disable button if no items to checkout
+                            : null,
+                        style: TextButton.styleFrom(
+                          backgroundColor: _addedItems.isNotEmpty
+                              ? const Color(
+                                  0xFFBD4254) // Original color when items exist
+                              : Colors.grey, // Grey when no items to checkout
+                          minimumSize: const Size(120, 48), // Same button size
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0, vertical: 8.0),
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius
+                                .zero, // Keep button shape consistent
+                          ),
+                        ), // Disable button if no items to checkout
                         child: Text(
                           'Check Out',
                           style: TextStyle(
@@ -1151,19 +1201,6 @@ class _GroceryHomePageState extends State<HomePage> {
                             fontWeight: FontWeight.w200,
                             color: Colors.white,
                             fontSize: 20, // Keep font size same
-                          ),
-                        ),
-                        style: TextButton.styleFrom(
-                          backgroundColor: _addedItems.isNotEmpty
-                              ? Color(
-                                  0xFFBD4254) // Original color when items exist
-                              : Colors.grey, // Grey when no items to checkout
-                          minimumSize: Size(120, 48), // Same button size
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 16.0, vertical: 8.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius
-                                .zero, // Keep button shape consistent
                           ),
                         ),
                       ),

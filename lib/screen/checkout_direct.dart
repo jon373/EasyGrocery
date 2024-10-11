@@ -10,7 +10,8 @@ class CheckoutPage extends StatefulWidget {
   final Function(String) onAddressSelected;
   final Function(String) onPaymentMethodSelected;
 
-  CheckoutPage({
+  const CheckoutPage({
+    super.key,
     required this.addedItems,
     required this.totalAmount,
     required this.onAddressSelected,
@@ -81,18 +82,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Checkout'),
+        title: const Text('Checkout'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               'Your Items',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Expanded(
               child: ListView(
                 children: widget.addedItems.map((quantityItem) {
@@ -105,13 +106,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 }).toList(),
               ),
             ),
-            SizedBox(height: 16),
-            Text(
+            const SizedBox(height: 16),
+            const Text(
               'Select Delivery Address',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             DropdownButton<String>(
-              hint: Text('Select an address'),
+              hint: const Text('Select an address'),
               value: selectedAddress,
               onChanged: (String? newValue) {
                 setState(() {
@@ -127,13 +128,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 );
               }).toList(),
             ),
-            SizedBox(height: 16),
-            Text(
+            const SizedBox(height: 16),
+            const Text(
               'Select Payment Method',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             DropdownButton<String>(
-              hint: Text('Select a payment method'),
+              hint: const Text('Select a payment method'),
               value: selectedPaymentMethod,
               onChanged: (String? newValue) {
                 setState(() {
@@ -149,12 +150,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 );
               }).toList(),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               'Total: Peso ${widget.totalAmount.toStringAsFixed(2)}',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Center(
               child: ElevatedButton(
                 onPressed: _confirmOrder,

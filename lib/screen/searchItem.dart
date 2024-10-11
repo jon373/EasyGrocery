@@ -66,8 +66,8 @@ class _SearchitemState extends State<Searchitem> {
         if (existingIndex != -1) {
           widget.addedItems[existingIndex].quantity += quantity;
         } else {
-          widget.addedItems
-              .add(quantityItem(item: item.item, quantity: quantity));
+          widget.addedItems.add(
+              quantityItem(item: item.item, quantity: quantity, uniqueIds: []));
         }
       });
       widget.onItemsAdded(widget.addedItems);
@@ -404,7 +404,8 @@ class _SearchitemState extends State<Searchitem> {
                                       widget.addedItems.add(
                                         quantityItem(
                                             item: item.item,
-                                            quantity: quantity),
+                                            quantity: quantity,
+                                            uniqueIds: []),
                                       );
                                     }
                                   });
@@ -449,7 +450,7 @@ class _SearchitemState extends State<Searchitem> {
   @override
   Widget build(BuildContext context) {
     List<quantityItem> wrappedItems = _filteredItems
-        .map((item) => quantityItem(item: item, quantity: 1))
+        .map((item) => quantityItem(item: item, quantity: 1, uniqueIds: []))
         .toList();
 
     // Filter items that have been ordered more than once (e.g., to show in "Your Favorite Ordered")

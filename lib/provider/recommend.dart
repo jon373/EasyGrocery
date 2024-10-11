@@ -7,7 +7,8 @@ class RecommendedItemsScreen extends StatelessWidget {
   final List<quantityItem> recommendedItems;
   final Function(List<quantityItem>) onAddToHomeScreen; // Callback function
 
-  RecommendedItemsScreen({
+  const RecommendedItemsScreen({
+    super.key,
     required this.mealType,
     required this.budget,
     required this.recommendedItems,
@@ -32,7 +33,8 @@ class RecommendedItemsScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10.0),
                   ),
                   elevation: 2.0,
-                  margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  margin:
+                      const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                   child: ListTile(
                     title: Text(item.item.name),
                     subtitle:
@@ -51,14 +53,17 @@ class RecommendedItemsScreen extends StatelessWidget {
                 onAddToHomeScreen(recommendedItems);
                 Navigator.pop(context); // Go back to the home screen
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    const Color(0xFFBD4254), // Customize button color
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                textStyle:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
               child: Text(
                 'Add All to Home Screen',
                 style: TextStyle(color: Colors.white),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFFBD4254), // Customize button color
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ),
