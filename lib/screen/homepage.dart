@@ -9,7 +9,7 @@ import 'carts_display.dart';
 import 'package:provider/provider.dart';
 import 'package:EasyGrocery/provider/cart_provider.dart';
 import 'package:EasyGrocery/provider/recommend.dart';
-import 'dart:math'; // Import the dart:math
+import 'dart:math';
 import 'package:EasyGrocery/provider/unique_id_manager.dart';
 
 class HomePage extends StatefulWidget {
