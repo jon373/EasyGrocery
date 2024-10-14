@@ -42,36 +42,43 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
     _meetingDataSource = MeetingDataSource(_meetingsList);
   }
 
+  @override
+  void dispose() {
+    // Save the meetings state before the widget is disposed
+    setState(() {
+      // You can also store the state in a provider or shared preferences here
+      // to persist it across sessions.
+    });
+    super.dispose();
+  }
+
 // Function to update the meeting time in the list of meetings
   void _updateMeetingTime(
       String uniqueId, DateTime newStartTime, DateTime newEndTime) {
     setState(() {
-      // Find the meeting using the unique ID
       final Meeting? meetingToUpdate = _meetingsList.firstWhere(
         (meeting) => meeting.uniqueId == uniqueId,
       );
 
       if (meetingToUpdate != null) {
-        // Remove the old meeting and create a new one with the updated time and color
-        _meetingsList.remove(meetingToUpdate);
+        _meetingsList.remove(meetingToUpdate); // Remove old meeting
 
         // Determine the new color based on the updated time range
         Color updatedColor = _determineColorBasedOnTime(newStartTime);
 
-        // Create a new Meeting instance with updated times, color, and the same unique ID
+        // Create a new Meeting instance with updated times and color
         Meeting updatedMeeting = Meeting(
           meetingToUpdate.eventName,
           newStartTime,
           newEndTime,
-          updatedColor, // Use the new color
+          updatedColor,
           meetingToUpdate.isAllDay,
-          uniqueId, // Preserve the unique ID
+          uniqueId, // Keep the same unique ID
         );
 
-        // Add the updated meeting to the list
         _meetingsList.add(updatedMeeting);
 
-        // Update the data source with the new meeting list
+        // Update the data source
         _meetingDataSource.appointments = _meetingsList
             .map((meeting) => Appointment(
                   startTime: meeting.from,
@@ -79,18 +86,12 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
                   subject: meeting.eventName,
                   color: meeting.background,
                   isAllDay: meeting.isAllDay,
-                  notes: meeting
-                      .uniqueId, // Set the uniqueId in the appointment notes
+                  notes: meeting.uniqueId,
                 ))
             .toList();
 
         _meetingDataSource.notifyListeners(
             CalendarDataSourceAction.reset, _meetingDataSource.appointments!);
-
-        print(
-            'Meeting with uniqueId $uniqueId updated to $newStartTime with color $updatedColor');
-      } else {
-        print('No meeting found to update for uniqueId: $uniqueId');
       }
     });
   }
@@ -247,28 +248,68 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
                                 dragEndDetails.appointment as Appointment;
                             final DateTime newStartTime =
                                 dragEndDetails.droppingTime!;
-                            final DateTime newEndTime = newStartTime.add(
-                                const Duration(hours: 2)); // Example duration
+                            final DateTime newEndTime =
+                                newStartTime.add(const Duration(hours: 2));
 
-                            // Find the corresponding meeting based on the unique ID stored in the 'notes' property
-                            final Meeting? draggedMeeting =
-                                _meetingsList.firstWhere(
-                              (meeting) =>
-                                  meeting.uniqueId == draggedAppointment.notes,
-                            );
+                            setState(() {
+                              // Find the correct meeting by matching the uniqueId
+                              final draggedMeeting = _meetingsList.where(
+                                (meeting) =>
+                                    meeting.uniqueId ==
+                                    draggedAppointment.notes,
+                              );
 
-                            // Update the meeting time if found
-                            if (draggedMeeting != null) {
-                              _updateMeetingTime(draggedMeeting.uniqueId,
-                                  newStartTime, newEndTime);
+                              // Ensure only the correct item moves based on its unique ID
+                              if (draggedMeeting.isNotEmpty) {
+                                final Meeting meetingToUpdate =
+                                    draggedMeeting.first;
 
-                              // Print for debugging to confirm the update
-                              print(
-                                  'Updated Meeting: ${draggedAppointment.subject} (Unique ID: ${draggedAppointment.notes}) moved to $newStartTime');
-                            }
+                                // Remove the old meeting and add the updated one
+                                _meetingsList.remove(meetingToUpdate);
+
+                                // Determine the new color based on the updated time range
+                                Color updatedColor =
+                                    _determineColorBasedOnTime(newStartTime);
+
+                                // Create a new meeting with updated time and color
+                                Meeting updatedMeeting = Meeting(
+                                  meetingToUpdate.eventName,
+                                  newStartTime,
+                                  newEndTime,
+                                  updatedColor,
+                                  meetingToUpdate.isAllDay,
+                                  meetingToUpdate
+                                      .uniqueId, // Keep the same uniqueId
+                                );
+
+                                _meetingsList.add(updatedMeeting);
+
+                                // Update the data source with the new meetings list
+                                _meetingDataSource.appointments = _meetingsList
+                                    .map((meeting) => Appointment(
+                                          startTime: meeting.from,
+                                          endTime: meeting.to,
+                                          subject: meeting.eventName,
+                                          color: meeting.background,
+                                          isAllDay: meeting.isAllDay,
+                                          notes: meeting
+                                              .uniqueId, // Ensure the uniqueId is properly used
+                                        ))
+                                    .toList();
+
+                                _meetingDataSource.notifyListeners(
+                                    CalendarDataSourceAction.reset,
+                                    _meetingDataSource.appointments!);
+
+                                print(
+                                    'Updated Meeting: ${draggedAppointment.subject}, Unique ID: ${draggedAppointment.notes}');
+                              } else {
+                                print(
+                                    'No meeting found for Unique ID: ${draggedAppointment.notes}');
+                              }
+                            });
                           }
                         },
-
                         onTap: (details) {
                           if (details.targetElement ==
                               CalendarElement.calendarCell) {
@@ -404,11 +445,11 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
       int totalQuantity = cartItem.quantity;
       int day = 0;
 
-      // Fetch the unique IDs for the item based on its quantity
+      // Fetch unique IDs for each quantity of the item
       List<String> uniqueIds = UniqueIdManager.getUniqueIdsForItem(
           cartItem.item.name, totalQuantity);
 
-      // Use the fetched unique IDs to create Meetings
+      // Use the unique IDs to create Meetings
       for (var uniqueId in uniqueIds) {
         DateTime date = today.add(Duration(days: day));
 
@@ -417,50 +458,42 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
           meetings.add(
             Meeting(
               cartItem.item.name,
-              DateTime(date.year, date.month, date.day, 7,
-                  0), // 7:00 AM start for Breakfast
-              DateTime(date.year, date.month, date.day, 9,
-                  0), // 9:00 AM end for Breakfast
+              DateTime(date.year, date.month, date.day, 7, 0),
+              DateTime(date.year, date.month, date.day, 9, 0),
               Colors.green,
               false,
-              uniqueId, // Use the unique ID for each quantity
+              uniqueId, // Each meeting gets a unique ID
             ),
           );
-          totalQuantity--; // Keep totalQuantity decrement for each meeting
+          totalQuantity--;
         }
 
-        // If the item is categorized for Lunch
         if (cartItem.item.mealType.contains('Lunch') && totalQuantity > 0) {
           meetings.add(
             Meeting(
               cartItem.item.name,
-              DateTime(date.year, date.month, date.day, 12,
-                  0), // 12:00 PM start for Lunch
-              DateTime(date.year, date.month, date.day, 14,
-                  30), // 2:30 PM end for Lunch
+              DateTime(date.year, date.month, date.day, 12, 0),
+              DateTime(date.year, date.month, date.day, 14, 30),
               Colors.yellow,
               false,
-              uniqueId, // Use the unique ID for each quantity
+              uniqueId, // Each meeting gets a unique ID
             ),
           );
-          totalQuantity--; // Keep totalQuantity decrement for each meeting
+          totalQuantity--;
         }
 
-        // If the item is categorized for Dinner
         if (cartItem.item.mealType.contains('Dinner') && totalQuantity > 0) {
           meetings.add(
             Meeting(
               cartItem.item.name,
-              DateTime(date.year, date.month, date.day, 19,
-                  0), // 7:00 PM start for Dinner
-              DateTime(date.year, date.month, date.day, 21,
-                  0), // 9:00 PM end for Dinner
+              DateTime(date.year, date.month, date.day, 19, 0),
+              DateTime(date.year, date.month, date.day, 21, 0),
               Colors.red,
               false,
-              uniqueId, // Use the unique ID for each quantity
+              uniqueId, // Each meeting gets a unique ID
             ),
           );
-          totalQuantity--; // Keep totalQuantity decrement for each meeting
+          totalQuantity--;
         }
 
         day++; // Increment the day for each unique item added
