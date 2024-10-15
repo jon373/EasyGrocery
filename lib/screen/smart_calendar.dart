@@ -56,12 +56,17 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
   void _updateMeetingTime(
       String uniqueId, DateTime newStartTime, DateTime newEndTime) {
     setState(() {
-      final Meeting? meetingToUpdate = _meetingsList.firstWhere(
+      // Find the meeting using the unique ID
+      final int index = _meetingsList.indexWhere(
         (meeting) => meeting.uniqueId == uniqueId,
       );
 
-      if (meetingToUpdate != null) {
-        _meetingsList.remove(meetingToUpdate); // Remove old meeting
+      if (index != -1) {
+        // Get the meeting to update
+        final Meeting meetingToUpdate = _meetingsList[index];
+
+        // Remove the old meeting
+        _meetingsList.removeAt(index);
 
         // Determine the new color based on the updated time range
         Color updatedColor = _determineColorBasedOnTime(newStartTime);
@@ -73,9 +78,10 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
           newEndTime,
           updatedColor,
           meetingToUpdate.isAllDay,
-          uniqueId, // Keep the same unique ID
+          uniqueId,
         );
 
+        // Add the updated meeting to the list
         _meetingsList.add(updatedMeeting);
 
         // Update the data source
@@ -92,6 +98,11 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
 
         _meetingDataSource.notifyListeners(
             CalendarDataSourceAction.reset, _meetingDataSource.appointments!);
+
+        print(
+            'Meeting with uniqueId $uniqueId updated to $newStartTime with color $updatedColor');
+      } else {
+        print('No meeting found to update for uniqueId: $uniqueId');
       }
     });
   }
@@ -248,43 +259,44 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
                                 dragEndDetails.appointment as Appointment;
                             final DateTime newStartTime =
                                 dragEndDetails.droppingTime!;
-                            final DateTime newEndTime =
-                                newStartTime.add(const Duration(hours: 2));
+                            final DateTime newEndTime = newStartTime.add(
+                                const Duration(hours: 2)); // Example duration
 
-                            setState(() {
-                              // Find the correct meeting by matching the uniqueId
-                              final draggedMeeting = _meetingsList.where(
+                            try {
+                              // Find the exact meeting using the unique ID
+                              final draggedMeeting = _meetingsList.firstWhere(
                                 (meeting) =>
                                     meeting.uniqueId ==
-                                    draggedAppointment.notes,
+                                        draggedAppointment.notes &&
+                                    meeting.from ==
+                                        draggedAppointment.startTime &&
+                                    meeting.to == draggedAppointment.endTime,
                               );
 
-                              // Ensure only the correct item moves based on its unique ID
-                              if (draggedMeeting.isNotEmpty) {
-                                final Meeting meetingToUpdate =
-                                    draggedMeeting.first;
-
-                                // Remove the old meeting and add the updated one
-                                _meetingsList.remove(meetingToUpdate);
-
+                              // Only proceed if the meeting is found
+                              setState(() {
                                 // Determine the new color based on the updated time range
                                 Color updatedColor =
                                     _determineColorBasedOnTime(newStartTime);
 
-                                // Create a new meeting with updated time and color
+                                // Create a new Meeting instance with updated times, color, and the same unique ID
                                 Meeting updatedMeeting = Meeting(
-                                  meetingToUpdate.eventName,
+                                  draggedMeeting.eventName,
                                   newStartTime,
                                   newEndTime,
-                                  updatedColor,
-                                  meetingToUpdate.isAllDay,
-                                  meetingToUpdate
-                                      .uniqueId, // Keep the same uniqueId
+                                  updatedColor, // Use the new color
+                                  draggedMeeting.isAllDay,
+                                  draggedMeeting
+                                      .uniqueId, // Preserve the unique ID
                                 );
 
-                                _meetingsList.add(updatedMeeting);
+                                // Replace the dragged meeting with the updated one
+                                int indexToUpdate =
+                                    _meetingsList.indexOf(draggedMeeting);
+                                _meetingsList[indexToUpdate] =
+                                    updatedMeeting; // Update in place
 
-                                // Update the data source with the new meetings list
+                                // Update the data source with the updated meeting list
                                 _meetingDataSource.appointments = _meetingsList
                                     .map((meeting) => Appointment(
                                           startTime: meeting.from,
@@ -292,8 +304,7 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
                                           subject: meeting.eventName,
                                           color: meeting.background,
                                           isAllDay: meeting.isAllDay,
-                                          notes: meeting
-                                              .uniqueId, // Ensure the uniqueId is properly used
+                                          notes: meeting.uniqueId,
                                         ))
                                     .toList();
 
@@ -302,12 +313,12 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
                                     _meetingDataSource.appointments!);
 
                                 print(
-                                    'Updated Meeting: ${draggedAppointment.subject}, Unique ID: ${draggedAppointment.notes}');
-                              } else {
-                                print(
-                                    'No meeting found for Unique ID: ${draggedAppointment.notes}');
-                              }
-                            });
+                                    'Updated Meeting: ${draggedAppointment.subject} (Unique ID: ${draggedAppointment.notes}) moved to $newStartTime');
+                              });
+                            } catch (e) {
+                              print(
+                                  'No meeting found to update for Unique ID: ${draggedAppointment.notes}');
+                            }
                           }
                         },
                         onTap: (details) {
