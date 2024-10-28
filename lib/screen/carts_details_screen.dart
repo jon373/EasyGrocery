@@ -13,10 +13,7 @@ class CartDetailsScreen extends StatefulWidget {
 }
 
 class _CartDetailsScreenState extends State<CartDetailsScreen> {
-  @override
-  void initState() {
-    super.initState();
-  }
+  quantityItem? _removedItem; // Temporarily store the removed item
 
   @override
   Widget build(BuildContext context) {
@@ -42,15 +39,33 @@ class _CartDetailsScreenState extends State<CartDetailsScreen> {
               child: const Icon(Icons.delete, color: Colors.white),
             ),
             onDismissed: (direction) {
+              // Temporarily store the removed item
+              _removedItem = item;
+
               // Remove the item from the cart
               setState(() {
                 cartProvider.removeItemFromCart(widget.cart.name, item);
               });
 
-              // Show a snackbar to indicate item removal
+              // Show a snackbar with an undo button
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                    content: Text("${item.item.name} removed from the cart")),
+                  content: Text("${item.item.name} removed from the cart"),
+                  duration: const Duration(seconds: 3),
+                  action: SnackBarAction(
+                    label: "Undo",
+                    onPressed: () {
+                      // If undo is pressed, restore the item
+                      setState(() {
+                        if (_removedItem != null) {
+                          cartProvider.addItemToCart(
+                              widget.cart.name, _removedItem!);
+                          _removedItem = null; // Clear the stored removed item
+                        }
+                      });
+                    },
+                  ),
+                ),
               );
             },
             child: Card(

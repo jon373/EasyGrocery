@@ -453,13 +453,17 @@ class _SearchitemState extends State<Searchitem> {
         .map((item) => quantityItem(item: item, quantity: 1, uniqueIds: []))
         .toList();
 
-    // Filter items that have been ordered more than once (e.g., to show in "Your Favorite Ordered")
+    // Sort items based on order count, and take the top 5 highest ordered items
     List<quantityItem> favoriteItems = wrappedItems
-        .where((item) =>
-            orderCountMap[item.item.name] != null &&
-            orderCountMap[item.item.name]! > 1)
-        .toList();
+        .where((item) => orderCountMap[item.item.name] != null)
+        .toList()
+      ..sort((a, b) => (orderCountMap[b.item.name] ?? 0)
+          .compareTo(orderCountMap[a.item.name] ?? 0));
 
+// Limit to top 5 based on order count
+    favoriteItems = favoriteItems.take(5).toList();
+
+    // Sort wrapped items based on order count for other purposes
     wrappedItems.sort((a, b) => (orderCountMap[b.item.name] ?? 0)
         .compareTo(orderCountMap[a.item.name] ?? 0));
 

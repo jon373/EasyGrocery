@@ -281,6 +281,10 @@ class _CartsScreenState extends State<CartsScreen> {
             totalAmount: totalAmount, // Pass the calculated total amount
             onAddressSelected: (address) {},
             onPaymentMethodSelected: (method) {},
+            // This callback will clear the selected carts after confirming the order
+            onOrderConfirmed: () {
+              _clearSelectedCarts();
+            },
           ),
         ),
       );
@@ -290,6 +294,23 @@ class _CartsScreenState extends State<CartsScreen> {
           content: Text("No carts selected for checkout."),
         ),
       );
+    }
+  }
+
+  void _clearSelectedCarts() {
+    // Get the selected carts and remove them from the provider
+    List<Cart> selectedCarts = Provider.of<CartProvider>(context, listen: false)
+        .carts
+        .where((cart) => cart.isSelected)
+        .toList();
+
+    if (selectedCarts.isNotEmpty) {
+      Provider.of<CartProvider>(context, listen: false).removeMultipleCarts(
+        selectedCarts.map((cart) => cart.id).toList(),
+      );
+
+      // Reset the total amount after clearing the carts
+      _selectedTotalAmount.value = 0.0;
     }
   }
 }

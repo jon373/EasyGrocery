@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:EasyGrocery/provider/categories.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'searchItem.dart';
 import 'checkout_direct.dart';
 import 'smart_calendar.dart';
@@ -663,6 +665,46 @@ class _GroceryHomePageState extends State<HomePage> {
       int newCartNumber = _carts.length + 1;
       _carts.add(Cart(name: 'Cart $newCartNumber', items: [], id: ''));
     });
+  }
+
+  Future<void> _saveAddedItemsToPrefs() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<Map<String, dynamic>> itemsJson = _addedItems
+        .map((item) => {
+              'name': item.item.name,
+              'quantity': item.quantity,
+              'price': item.item.price,
+              'category': item.item.category,
+              'mealType': item.item.mealType,
+            })
+        .toList();
+
+    // Save the list of items as a JSON string
+    await prefs.setString('addedItems', jsonEncode(itemsJson));
+  }
+
+  Future<void> _loadAddedItemsFromPrefs() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? itemsString = prefs.getString('addedItems');
+
+    if (itemsString != null) {
+      List<Map<String, dynamic>> itemsJson =
+          List<Map<String, dynamic>>.from(jsonDecode(itemsString));
+      setState(() {
+        _addedItems = itemsJson
+            .map((json) => quantityItem(
+                  item: GroceryItem(
+                    name: json['name'],
+                    price: json['price'],
+                    category: json['category'],
+                    mealType: List<String>.from(json['mealType']),
+                  ),
+                  quantity: json['quantity'],
+                  uniqueIds: [], // Handle unique IDs if necessary
+                ))
+            .toList();
+      });
+    }
   }
 
   @override

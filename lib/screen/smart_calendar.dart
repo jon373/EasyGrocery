@@ -45,28 +45,29 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
   @override
   void dispose() {
     // Save the meetings state before the widget is disposed
-    setState(() {
-      // You can also store the state in a provider or shared preferences here
-      // to persist it across sessions.
-    });
-    super.dispose();
+    // Use a suitable persistent mechanism, for example:
+    // Save state to shared preferences, provider, or a database
+
+    saveMeetingsState(); // Save the state before disposing
+
+    super.dispose(); // Call the parent class's dispose method
+  }
+
+  void saveMeetingsState() {
+    // Add your logic here to save the state
+    // For example, you can use shared preferences or another state management approach
   }
 
 // Function to update the meeting time in the list of meetings
   void _updateMeetingTime(
       String uniqueId, DateTime newStartTime, DateTime newEndTime) {
     setState(() {
-      // Find the meeting using the unique ID
-      final int index = _meetingsList.indexWhere(
+      final Meeting? meetingToUpdate = _meetingsList.firstWhere(
         (meeting) => meeting.uniqueId == uniqueId,
       );
 
-      if (index != -1) {
-        // Get the meeting to update
-        final Meeting meetingToUpdate = _meetingsList[index];
-
-        // Remove the old meeting
-        _meetingsList.removeAt(index);
+      if (meetingToUpdate != null) {
+        _meetingsList.remove(meetingToUpdate); // Remove old meeting
 
         // Determine the new color based on the updated time range
         Color updatedColor = _determineColorBasedOnTime(newStartTime);
@@ -78,10 +79,9 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
           newEndTime,
           updatedColor,
           meetingToUpdate.isAllDay,
-          uniqueId,
+          uniqueId, // Keep the same unique ID
         );
 
-        // Add the updated meeting to the list
         _meetingsList.add(updatedMeeting);
 
         // Update the data source
@@ -98,11 +98,6 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
 
         _meetingDataSource.notifyListeners(
             CalendarDataSourceAction.reset, _meetingDataSource.appointments!);
-
-        print(
-            'Meeting with uniqueId $uniqueId updated to $newStartTime with color $updatedColor');
-      } else {
-        print('No meeting found to update for uniqueId: $uniqueId');
       }
     });
   }
@@ -259,44 +254,43 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
                                 dragEndDetails.appointment as Appointment;
                             final DateTime newStartTime =
                                 dragEndDetails.droppingTime!;
-                            final DateTime newEndTime = newStartTime.add(
-                                const Duration(hours: 2)); // Example duration
+                            final DateTime newEndTime =
+                                newStartTime.add(const Duration(hours: 2));
 
-                            try {
-                              // Find the exact meeting using the unique ID
-                              final draggedMeeting = _meetingsList.firstWhere(
+                            setState(() {
+                              // Find the correct meeting by matching the uniqueId
+                              final draggedMeeting = _meetingsList.where(
                                 (meeting) =>
                                     meeting.uniqueId ==
-                                        draggedAppointment.notes &&
-                                    meeting.from ==
-                                        draggedAppointment.startTime &&
-                                    meeting.to == draggedAppointment.endTime,
+                                    draggedAppointment.notes,
                               );
 
-                              // Only proceed if the meeting is found
-                              setState(() {
+                              // Ensure only the correct item moves based on its unique ID
+                              if (draggedMeeting.isNotEmpty) {
+                                final Meeting meetingToUpdate =
+                                    draggedMeeting.first;
+
+                                // Remove the old meeting and add the updated one
+                                _meetingsList.remove(meetingToUpdate);
+
                                 // Determine the new color based on the updated time range
                                 Color updatedColor =
                                     _determineColorBasedOnTime(newStartTime);
 
-                                // Create a new Meeting instance with updated times, color, and the same unique ID
+                                // Create a new meeting with updated time and color
                                 Meeting updatedMeeting = Meeting(
-                                  draggedMeeting.eventName,
+                                  meetingToUpdate.eventName,
                                   newStartTime,
                                   newEndTime,
-                                  updatedColor, // Use the new color
-                                  draggedMeeting.isAllDay,
-                                  draggedMeeting
-                                      .uniqueId, // Preserve the unique ID
+                                  updatedColor,
+                                  meetingToUpdate.isAllDay,
+                                  meetingToUpdate
+                                      .uniqueId, // Keep the same uniqueId
                                 );
 
-                                // Replace the dragged meeting with the updated one
-                                int indexToUpdate =
-                                    _meetingsList.indexOf(draggedMeeting);
-                                _meetingsList[indexToUpdate] =
-                                    updatedMeeting; // Update in place
+                                _meetingsList.add(updatedMeeting);
 
-                                // Update the data source with the updated meeting list
+                                // Update the data source with the new meetings list
                                 _meetingDataSource.appointments = _meetingsList
                                     .map((meeting) => Appointment(
                                           startTime: meeting.from,
@@ -304,7 +298,8 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
                                           subject: meeting.eventName,
                                           color: meeting.background,
                                           isAllDay: meeting.isAllDay,
-                                          notes: meeting.uniqueId,
+                                          notes: meeting
+                                              .uniqueId, // Ensure the uniqueId is properly used
                                         ))
                                     .toList();
 
@@ -313,12 +308,12 @@ class _SmartCalendarPageState extends State<SmartCalendarPage> {
                                     _meetingDataSource.appointments!);
 
                                 print(
-                                    'Updated Meeting: ${draggedAppointment.subject} (Unique ID: ${draggedAppointment.notes}) moved to $newStartTime');
-                              });
-                            } catch (e) {
-                              print(
-                                  'No meeting found to update for Unique ID: ${draggedAppointment.notes}');
-                            }
+                                    'Updated Meeting: ${draggedAppointment.subject}, Unique ID: ${draggedAppointment.notes}');
+                              } else {
+                                print(
+                                    'No meeting found for Unique ID: ${draggedAppointment.notes}');
+                              }
+                            });
                           }
                         },
                         onTap: (details) {
